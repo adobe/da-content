@@ -1,10 +1,22 @@
+export function getResponse({ body, status, contentType }) {
+  const headers = new Headers();
+  headers.append('Access-Control-Allow-Origin', '*');
+  // headers.append('Access-Control-Allow-Methods', 'OPTIONS, GET, PUT, POST');
+  // headers.append('Access-Control-Max-Age', 2592000);
+
+  if (contentType)
+    headers.append('Content-Type', contentType);
+
+  return new Response(body, { status, headers });
+}
+
 export function get404() {
-  return new Response('');
+  return getResponse({ body: '', status: 404 });
 }
 
 export function getRobots() {
-  const robots = `User-agent: *
+  const body = `User-agent: *
 Disallow: /`;
 
-  return new Response(robots);
+  return getResponse({ body, status: 200 });
 }
