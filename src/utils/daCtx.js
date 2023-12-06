@@ -16,7 +16,7 @@
 export function getDaCtx(pathname) {
   // Santitize the string
   const lower = pathname.slice(1).toLowerCase();
-  const sanitized = lower.endsWith('/') ? lower.slice(0, -1) : lower;
+  const sanitized = lower.endsWith('/') ? `${lower}index` : lower;
 
   // Get base details
   const [org, ...parts] = sanitized.split('/');

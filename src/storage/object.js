@@ -6,7 +6,6 @@ import {
 import getS3Config from './utils';
 
 function buildInput({ org, key, ext }) {
-  console.log(ext);
   const Bucket = `${org}-content`;
   return { Bucket, Key: key };
 }
