@@ -2,7 +2,7 @@ import { getDaCtx } from './utils/daCtx';
 
 import getObject from './storage/object';
 
-import { get404, getResponse, getRobots } from './responses/index';
+import { get404, daResp, getRobots } from './responses/index';
 
 export default {
   async fetch(req, env) {
@@ -12,8 +12,8 @@ export default {
     if (url.pathname === '/robots.txt') return getRobots();
 
     const daCtx = getDaCtx(url.pathname);
-    const respProps = await getObject(env, daCtx);
+    const objResp = await getObject(env, daCtx);
 
-    return getResponse(respProps);
+    return daResp(objResp);
   },
 };

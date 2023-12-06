@@ -16,30 +16,48 @@
 export function getDaCtx(pathname) {
   // Santitize the string
   const lower = pathname.slice(1).toLowerCase();
-  const sanitized = lower.endsWith('/') ? `${lower}/index.html` : lower;
+  const sanitized = lower.endsWith('/') ? lower.slice(0, -1) : lower;
 
   // Get base details
-  const [org, site, ...parts] = sanitized.split('/');
+  const [org, ...parts] = sanitized.split('/');
 
   // Set base details
-  const daCtx = { org, site };
+  const daCtx = { org };
 
   // Sanitize the remaining path parts
   const path = parts.filter((part) => part !== '');
+  const keyBase = path.join('/');
 
-  if (path.length === 0) {
-    daCtx.key = `${site}/.daprops`;
-    return daCtx;
-  }
+  // Get the final source name
+  daCtx.filename = path.pop() || '';
 
-  daCtx.name = path.slice(-1)[0];
-  const split = daCtx.name.split('.');
-  const hasExt = split.length > 1;
-  const keyBase = `${site}/${path.join('/')}`;
-  daCtx.key = hasExt ? keyBase : `${keyBase}.html`;
-  if (hasExt) {
-    daCtx.ext = split.pop();
-    daCtx.propsKey = `${keyBase}/.daprops`;
+  daCtx.site = path[0];
+
+  // Handle folders and files under a site
+  const split = daCtx.filename.split('.');
+  
+  // DA Content - Add HTML if there is only one part to the split
+  if (split.length === 1) split.push('html');
+  daCtx.isFile = split.length > 1;
+  if (daCtx.isFile) daCtx.ext = split.pop();
+  daCtx.name = split.join('.');
+
+  // Set keys
+  daCtx.key = daCtx?.ext === 'html' ? `${keyBase}.html` : keyBase;
+  daCtx.propsKey = `${daCtx.key}.props`;
+
+  // Set paths for API consumption
+  const aemParts = daCtx.site ? path.slice(1) : path;
+  const aemPathBase = [...aemParts, daCtx.name].join('/');
+
+  const daPathBase = [...path, daCtx.name].join('/');
+
+  if (!daCtx.ext || daCtx.ext === 'html') {
+    daCtx.pathname = `/${daPathBase}`;
+    daCtx.aemPathname = `/${aemPathBase}`;
+  } else {
+    daCtx.pathname = `/${daPathBase}.${daCtx.ext}`;
+    daCtx.aemPathname = `/${aemPathBase}.${daCtx.ext}`;
   }
 
   return daCtx;
