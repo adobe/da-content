@@ -1,28 +1,38 @@
-import {
-  S3Client,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
+/*
+ * Copyright 2024 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 
-import getS3Config from './utils';
-
-function buildInput({ org, key, ext }) {
-  const Bucket = `${org}-content`;
-  return { Bucket, Key: key };
-}
-
-export default async function getObject(env, daCtx) {
-  const config = getS3Config(env);
-  const client = new S3Client(config);
-
-  const input = buildInput(daCtx);
-  const command = new GetObjectCommand(input);
+/**
+ * Retrieve a specified object.
+ * @param {Object} env the CloudFlare environment
+ * @param {String} org the org of the object
+ * @param {String} key the key of the object
+ * @return {Promise<{Object}>} response object
+ */
+export default async function getObject(env, { org, key }) {
 
   try {
-    const resp = await client.send(command);
+    const obj = await env.DA_CONTENT.get(`${org}/${key}`);
+    if (!obj) {
+      return { status: 404, body: '' };
+    }
+
+    const body = await obj.text();
+
     return {
-      body: resp.Body,
-      status: resp.$metadata.httpStatusCode,
-      contentType: resp.ContentType
+      status: 200,
+      contentType: obj.httpMetadata.contentType,
+      contentLength: obj.size,
+      etag: obj.httpEtag,
+      body,
     };
   } catch (e) {
     return { body: '', status: 404 };

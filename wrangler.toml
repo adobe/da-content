@@ -1,3 +1,17 @@
 name = "da-content"
 main = "src/index.js"
 compatibility_date = "2023-11-21"
+
+r2_buckets = [
+  { binding = "DA_CONTENT", bucket_name = "da-content" }
+]
+
+[env.stage]
+r2_buckets = [
+  { binding = "DA_CONTENT", bucket_name = "da-content-stage" }
+]
+
+[env.dev]
+r2_buckets = [
+  { binding = "DA_CONTENT", bucket_name = "da-content-dev" }
+]
