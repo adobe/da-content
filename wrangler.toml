@@ -1,3 +1,5 @@
 name = "da-content"
 main = "src/index.js"
 compatibility_date = "2023-11-21"
+
+vars = { DA_BUCKET = "da-content" }

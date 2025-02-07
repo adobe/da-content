@@ -5,9 +5,9 @@ import {
 
 import getS3Config from './utils';
 
-function buildInput({ org, key, ext }) {
-  const Bucket = `${org}-content`;
-  return { Bucket, Key: key };
+function buildInput({ bucket, org, key, ext }) {
+  const Bucket = bucket;
+  return { Bucket, Key: `${org}/${key}` };
 }
 
 export default async function getObject(env, daCtx) {

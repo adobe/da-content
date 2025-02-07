@@ -20,9 +20,10 @@ export function getDaCtx(pathname) {
 
   // Get base details
   const [org, ...parts] = sanitized.split('/');
+  const bucket = env.DA_BUCKET;
 
   // Set base details
-  const daCtx = { org };
+  const daCtx = { bucket, org };
 
   // Sanitize the remaining path parts
   const path = parts.filter((part) => part !== '');
@@ -35,7 +36,7 @@ export function getDaCtx(pathname) {
 
   // Handle folders and files under a site
   const split = daCtx.filename.split('.');
-  
+
   // DA Content - Add HTML if there is only one part to the split
   if (split.length === 1) split.push('html');
   daCtx.isFile = split.length > 1;
