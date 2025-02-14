@@ -4,6 +4,9 @@ import getObject from './storage/object';
 import { get404, daResp, getRobots } from './responses/index';
 import getFromAdmin from './storage/admin';
 
+const ADMIN_ENABLED_ORGS = [
+  'andreituicu',
+]
 const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif' ];
 
 export default {
@@ -18,7 +21,7 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (org === 'andreituicu' && !EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext))) {
+    if (!EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext)) && ADMIN_ENABLED_ORGS.includes(org)) {
       return await getFromAdmin(req);
     }
 
