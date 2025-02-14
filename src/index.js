@@ -6,16 +6,17 @@ import getFromAdmin from './storage/admin';
 
 const ADMIN_ENABLED_ORGS = [
   'andreituicu',
-]
+];
 const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif' ];
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    const { pathname } = url;
 
-    if (url.pathname === '/favicon.ico') return get404();
-    if (url.pathname === '/robots.txt') return getRobots();
-    if ([...url.pathname].filter((c) => c === '.').length > 1) return get404(); 
+    if (pathname === '/favicon.ico') return get404();
+    if (pathname === '/robots.txt') return getRobots();
+    if ([...pathname].filter((c) => c === '.').length > 1) return get404(); 
 
     const [, org, site] = url.pathname.split('/');
 
@@ -25,7 +26,7 @@ export default {
       return await getFromAdmin(req);
     }
 
-    const daCtx = getDaCtx(url.pathname);
+    const daCtx = getDaCtx(pathname);
     const objResp = await getObject(env, daCtx);
     return daResp(objResp);
   },
