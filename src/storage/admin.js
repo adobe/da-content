@@ -32,6 +32,10 @@ function getAuthHeader(req) {
 }
 
 export default async function getFromAdmin(req) {
+  if (req.method !== 'GET') {
+    return new Response('', { status: 405 });
+  }
+
   let { pathname } = new URL(req.url);
 
   // canonicalize path
