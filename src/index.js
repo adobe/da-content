@@ -7,7 +7,8 @@ import getFromAdmin from './storage/admin';
 const ADMIN_ENABLED_ORGS = [
   'andreituicu',
 ];
-const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif' ];
+
+const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif', '.mp4', '.svg' ];
 
 export default {
   async fetch(req, env) {
