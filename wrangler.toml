@@ -1,3 +1,6 @@
 name = "da-content"
 main = "src/index.js"
 compatibility_date = "2023-11-21"
+
+[env.stage]
+# No specific configurations for staging
