@@ -24,7 +24,7 @@ export default {
     if (!org || !site) return get404();
 
     if (!EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext)) && ADMIN_ENABLED_ORGS.includes(org)) {
-      return await getFromAdmin(req);
+      return await getFromAdmin(req, env);
     }
 
     const daCtx = getDaCtx(pathname);

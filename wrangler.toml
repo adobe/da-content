@@ -2,5 +2,11 @@ name = "da-content"
 main = "src/index.js"
 compatibility_date = "2023-11-21"
 
+services = [
+  { binding = "daadmin", service = "da-admin" }
+]
+
 [env.stage]
-# No specific configurations for staging
+services = [
+  { binding = "daadmin", service = "da-admin" }
+]

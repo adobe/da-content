@@ -31,7 +31,7 @@ function getAuthHeader(req) {
   return null;
 }
 
-export default async function getFromAdmin(req) {
+export default async function getFromAdmin(req, env) {
   if (req.method !== 'GET') {
     return new Response('', { status: 405 });
   }
@@ -57,12 +57,14 @@ export default async function getFromAdmin(req) {
   }
 
   try {
-    const resp = await fetch(url, {
+    console.log('-> get from admin', url);
+    const resp = await env.daadmin.fetch(url, {
       headers: reqHeaders,
     });
     const { status, headers } = resp;
     const body = await resp.blob();
 
+    console.log('<- admin responded with:', status);
     return new Response(body, { status, headers });
   } catch (e) {
     const msg = 'Failed to fetch from admin';
