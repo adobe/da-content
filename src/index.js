@@ -17,7 +17,6 @@ export default {
 
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
-    if ([...pathname].filter((c) => c === '.').length > 1) return get404(); 
 
     const [, org, site] = url.pathname.split('/');
 
