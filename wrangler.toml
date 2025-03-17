@@ -2,6 +2,8 @@ name = "da-content"
 main = "src/index.js"
 compatibility_date = "2023-11-21"
 
+keep_vars = true
+
 services = [
   { binding = "daadmin", service = "da-admin" }
 ]
