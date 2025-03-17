@@ -28,7 +28,7 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (isEmbeddableAsset(pathname) || env.EXCEPTED_ORGS?.split(',').includes(org)) {
+    if (isEmbeddableAsset(pathname) || env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)) {
       return await getFromStorage(pathname, env);
     }
 
