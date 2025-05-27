@@ -31,21 +31,35 @@ function getAuthHeader(req) {
   return null;
 }
 
+function canonicalizePathname(pathname) {
+  // all paths are lowercase
+  pathname = pathname.toLowerCase();
+
+  if (pathname.endsWith('/')) {
+    pathname += 'index';
+  }
+
+  // remove special characters, empty parts, . and ..
+  pathname = `/${pathname.split('/')
+    .map((part) => part.replace(/[^a-z0-9.-]/gi, ''))
+    .filter((part) => part !== '' && part !== '.' && part !== '..')
+    .join('/')}`;
+
+  // extension-less files get a html extension
+  if (!pathname.split('/').pop().includes('.')) {
+    pathname += '.html';
+  }
+
+  return pathname;
+}
+
 export default async function getFromAdmin(req, env) {
   if (req.method !== 'GET') {
     return new Response('', { status: 405 });
   }
 
   let { pathname } = new URL(req.url);
-
-  // canonicalize path
-  if (pathname.endsWith('/')) {
-    pathname += 'index';
-  }
-
-  if (!pathname.includes('.')) {
-    pathname += '.html';
-  }
+  pathname = canonicalizePathname(pathname);
 
   // construct request to admin
   const url = `${AMDMIN_URL}${pathname}`;

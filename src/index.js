@@ -4,11 +4,17 @@ import getObject from './storage/object';
 import { get404, daResp, getRobots } from './responses/index';
 import getFromAdmin from './storage/admin';
 
-const ADMIN_ENABLED_ORGS = [
-  'andreituicu',
-];
-
 const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif', '.mp4', '.svg' ];
+
+async function getFromStorage(pathname, env) {
+  const daCtx = getDaCtx(pathname);
+  const objResp = await getObject(env, daCtx);
+  return daResp(objResp);
+}
+
+function isEmbeddableAsset(pathname) {
+  return EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext));
+}
 
 export default {
   async fetch(req, env) {
@@ -22,12 +28,10 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (!EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext)) && ADMIN_ENABLED_ORGS.includes(org)) {
-      return await getFromAdmin(req, env);
+    if (isEmbeddableAsset(pathname) || env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)) {
+      return await getFromStorage(pathname, env);
     }
 
-    const daCtx = getDaCtx(pathname);
-    const objResp = await getObject(env, daCtx);
-    return daResp(objResp);
+    return await getFromAdmin(req, env);
   },
 };
