@@ -54,7 +54,11 @@ function canonicalizePathname(pathname) {
 }
 
 export default async function getFromAdmin(req, env) {
-  if (req.method !== 'GET') {
+  if (req.method === 'OPTIONS') {
+    return daResp({ body: '', status: 200 });
+  }
+
+  if (!['OPTIONS', 'GET'].includes(req.method)) {
     return new Response('', { status: 405 });
   }
 

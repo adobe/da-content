@@ -1,6 +1,8 @@
 export function daResp({ body, status, contentType }) {
   const headers = new Headers();
   headers.append('Access-Control-Allow-Origin', '*');
+  headers.append('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  headers.append('Access-Control-Allow-Headers', 'authorization');
 
   if (contentType)
     headers.append('Content-Type', contentType);
