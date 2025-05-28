@@ -58,7 +58,7 @@ export default async function getFromAdmin(req, env) {
     return daResp({ body: '', status: 200 });
   }
 
-  if (!['OPTIONS', 'GET'].includes(req.method)) {
+  if (req.method !== 'GET') {
     return new Response('', { status: 405 });
   }
 
