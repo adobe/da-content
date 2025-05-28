@@ -1,4 +1,5 @@
 import { parse } from "cookie";
+import { daResp } from "../responses/index";
 
 const AMDMIN_URL = 'https://admin.da.live/source';
 
@@ -54,6 +55,10 @@ function canonicalizePathname(pathname) {
 }
 
 export default async function getFromAdmin(req, env) {
+  if (req.method === 'OPTIONS') {
+    return daResp({ body: '', status: 200 });
+  }
+
   if (req.method !== 'GET') {
     return new Response('', { status: 405 });
   }
