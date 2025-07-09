@@ -5,9 +5,8 @@ import {
 
 import getS3Config from './utils';
 
-function buildInput({ org, key, ext }) {
-  const Bucket = `${org}-content`;
-  return { Bucket, Key: key };
+function buildInput({ org, key }) {
+  return { Bucket: 'aem-content', Key: `${org}/${key}` };
 }
 
 export default async function getObject(env, daCtx) {
