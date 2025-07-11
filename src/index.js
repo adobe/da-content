@@ -1,6 +1,6 @@
 import { getDaCtx } from './utils/daCtx';
 import getObject from './storage/object';
-
+import { getCookie } from './cookie';
 import { get404, daResp, getRobots } from './responses/index';
 import getFromAdmin from './storage/admin';
 
@@ -24,9 +24,17 @@ export default {
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
 
-    const [, org, site] = url.pathname.split('/');
+    const [, org, site, root ] = url.pathname.split('/');
 
+    if (root === '.gimme_cookie') {
+      return getCookie(req, org, site);
+    }
+ 
     if (!org || !site) return get404();
+
+    if (org === 'andreituicu') {
+      return await getFromAdmin(req, env);
+    }
 
     if (isEmbeddableAsset(pathname) || env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)) {
       return await getFromStorage(pathname, env);
