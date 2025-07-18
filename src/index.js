@@ -4,7 +4,7 @@ import getObject from './storage/object';
 import { get404, daResp, getRobots } from './responses/index';
 import getFromAdmin from './storage/admin';
 
-const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif', '.mp4', '.svg' ];
+const EMBEDDABLE_ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.gif', '.mp4' ];
 
 async function getFromStorage(pathname, env) {
   const daCtx = getDaCtx(pathname);
