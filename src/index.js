@@ -18,6 +18,11 @@ function isEmbeddableAsset(pathname) {
   return EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext));
 }
 
+function isAllowListed(env, req) {
+  return env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)
+    && req.headers.get('cf-connecting-ip') === HELIX_ADMIN_IP;
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -30,14 +35,8 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (isEmbeddableAsset(pathname)) {
+    if (isEmbeddableAsset(pathname) || isAllowListed(env, req)) {
       return await getFromStorage(pathname, env);
-    }
-
-    if (env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)
-      && !req.headers.get('Authorization')
-      && req.headers.get('cf-connecting-ip') === HELIX_ADMIN_IP) {
-        return await getFromStorage(pathname, env);
     }
 
     return await getFromAdmin(req, env);
