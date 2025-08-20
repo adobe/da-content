@@ -10,19 +10,22 @@
 
 /**
  * Gets Dark Alley Context
+ * @param {Object} env the environment in which the work is running
  * @param {pathname} pathname
  * @returns {DaCtx} The Dark Alley Context.
  */
-export function getDaCtx(pathname) {
+export function getDaCtx(env, pathname) {
   // Santitize the string
   const lower = pathname.slice(1).toLowerCase();
   const sanitized = lower.endsWith('/') ? `${lower}index` : lower;
+
+  const bucket = env.AEM_BUCKET_NAME;
 
   // Get base details
   const [org, ...parts] = sanitized.split('/');
 
   // Set base details
-  const daCtx = { org };
+  const daCtx = { bucket, org };
 
   // Sanitize the remaining path parts
   const path = parts.filter((part) => part !== '');
