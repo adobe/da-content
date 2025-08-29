@@ -21,7 +21,8 @@ export default async function getObject(env, daCtx) {
     return {
       body: resp.Body,
       status: resp.$metadata.httpStatusCode,
-      contentType: resp.ContentType
+      contentType: resp.ContentType,
+      contentLength: resp.ContentLength,
     };
   } catch (e) {
     return { body: '', status: 404 };

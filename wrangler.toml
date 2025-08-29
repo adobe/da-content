@@ -4,6 +4,8 @@ compatibility_date = "2023-11-21"
 
 keep_vars = true
 
+vars = { AEM_BUCKET_NAME = "aem-content" }
+
 services = [
   { binding = "daadmin", service = "da-admin" }
 ]
@@ -11,7 +13,9 @@ services = [
 [env.stage]
 vars = { ENVIRONMENT = "stage", AEM_BUCKET_NAME = "aem-content-stage" }
 
-
 services = [
   { binding = "daadmin", service = "da-admin-stage" }
 ]
+
+[dev]
+port = 8788
