@@ -9,7 +9,7 @@ const HELIX_ADMIN_IP = '3.227.118.73';
 const EMBEDDABLE_ASSETS_EXTENSIONS = ['.avif', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.mp4'];
 
 async function getFromStorage(pathname, env) {
-  const daCtx = getDaCtx(pathname);
+  const daCtx = getDaCtx(env, pathname);
   const objResp = await getObject(env, daCtx);
   return daResp(objResp);
 }
