@@ -26,9 +26,9 @@ global.console = {
 
 // Setup test environment
 beforeEach(() => {
-  vi.clearAllMocks();
+  // Don't clear mocks here - let individual tests manage their mocks
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  // Don't restore mocks here - let individual tests manage their mocks
 });
