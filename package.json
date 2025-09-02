@@ -11,10 +11,12 @@
     "start": "wrangler dev",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "3.0.9",
+    "@vitest/coverage-v8": "3.2.4",
     "eslint": "9.4.0",
     "vitest": "3.2.4",
     "wrangler": "4.33.1"
