@@ -9,24 +9,26 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-export function daResp({ body, status, contentType }) {
-  const headers = new Headers();
-  headers.append('Access-Control-Allow-Origin', '*');
-  headers.append('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  headers.append('Access-Control-Allow-Headers', 'authorization');
+import { vi, beforeEach, afterEach } from 'vitest';
 
-  if (contentType) headers.append('Content-Type', contentType);
+// Global test setup for Cloudflare Workers environment
+global.vi = vi;
 
-  return new Response(body, { status, headers });
-}
+// Mock console methods to reduce noise in tests
+global.console = {
+  ...console,
+  log: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+};
 
-export function get404() {
-  return daResp({ body: '', status: 404 });
-}
+// Setup test environment
+beforeEach(() => {
+  // Don't clear mocks here - let individual tests manage their mocks
+});
 
-export function getRobots() {
-  const body = `User-agent: *
-Disallow: /`;
-
-  return daResp({ body, status: 200 });
-}
+afterEach(() => {
+  // Don't restore mocks here - let individual tests manage their mocks
+});

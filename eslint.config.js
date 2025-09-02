@@ -9,24 +9,25 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-export function daResp({ body, status, contentType }) {
-  const headers = new Headers();
-  headers.append('Access-Control-Allow-Origin', '*');
-  headers.append('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  headers.append('Access-Control-Allow-Headers', 'authorization');
+import { defineConfig, globalIgnores } from '@eslint/config-helpers';
+import { recommended, source, test } from '@adobe/eslint-config-helix';
 
-  if (contentType) headers.append('Content-Type', contentType);
-
-  return new Response(body, { status, headers });
-}
-
-export function get404() {
-  return daResp({ body: '', status: 404 });
-}
-
-export function getRobots() {
-  const body = `User-agent: *
-Disallow: /`;
-
-  return daResp({ body, status: 200 });
-}
+export default defineConfig([
+  globalIgnores([
+    'index.js',
+    '.vscode/*',
+    'logs/*',
+    'demos/*',
+    'test/fixtures',
+    'test/tmp/*',
+    'tmp/*',
+    'coverage',
+    'node_modules/*',
+    '.wrangler/*',
+  ]),
+  {
+    extends: [recommended],
+  },
+  source,
+  test,
+]);
