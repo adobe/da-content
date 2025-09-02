@@ -62,9 +62,7 @@ describe('getFromAdmin', () => {
     test('should handle OPTIONS request with daResp', async () => {
       mockReq.method = 'OPTIONS';
 
-      const result = await getFromAdmin(mockReq, mockEnv);
-
-      console.log(result);
+      await getFromAdmin(mockReq, mockEnv);
 
       expect(daResp).toHaveBeenCalledWith({ body: '', status: 200 });
     });
