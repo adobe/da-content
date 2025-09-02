@@ -1,20 +1,33 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+/*
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+import {
+  describe, test, expect, vi, beforeEach,
+} from 'vitest';
+
+// Import after mocking
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import getObject from '../../src/storage/object.js';
+import getS3Config from '../../src/storage/utils.js';
 
 // Mock the AWS SDK modules
 vi.mock('@aws-sdk/client-s3', () => ({
   S3Client: vi.fn(),
-  GetObjectCommand: vi.fn()
+  GetObjectCommand: vi.fn(),
 }));
 
 // Mock the utils module
 vi.mock('../../src/storage/utils.js', () => ({
-  default: vi.fn()
+  default: vi.fn(),
 }));
-
-// Import after mocking
-import getObject from '../../src/storage/object.js';
-import getS3Config from '../../src/storage/utils.js';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
 describe('getObject', () => {
   let mockS3Client;
@@ -23,22 +36,22 @@ describe('getObject', () => {
   beforeEach(() => {
     // Clear all mocks
     vi.clearAllMocks();
-    
+
     // Mock the S3Client constructor
     mockSend = vi.fn();
     mockS3Client = {
-      send: mockSend
+      send: mockSend,
     };
     S3Client.mockImplementation(() => mockS3Client);
-    
+
     // Mock the utils function
     getS3Config.mockReturnValue({
       region: 'auto',
       endpoint: 'https://test-s3-endpoint.com',
       credentials: {
         accessKeyId: 'test-access-key',
-        secretAccessKey: 'test-secret-key'
-      }
+        secretAccessKey: 'test-secret-key',
+      },
     });
   });
 
@@ -48,14 +61,14 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'test-org',
-        key: 'test-key'
+        key: 'test-key',
       };
 
       const mockS3Response = {
         Body: 'test-content',
         $metadata: { httpStatusCode: 200 },
         ContentType: 'text/html',
-        ContentLength: 123
+        ContentLength: 123,
       };
 
       mockSend.mockResolvedValue(mockS3Response);
@@ -67,13 +80,13 @@ describe('getObject', () => {
         endpoint: 'https://test-s3-endpoint.com',
         credentials: {
           accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key'
-        }
+          secretAccessKey: 'test-secret-key',
+        },
       });
 
       expect(GetObjectCommand).toHaveBeenCalledWith({
         Bucket: 'test-bucket',
-        Key: 'test-org/test-key'
+        Key: 'test-org/test-key',
       });
 
       expect(mockSend).toHaveBeenCalledWith(expect.any(GetObjectCommand));
@@ -82,7 +95,7 @@ describe('getObject', () => {
         body: 'test-content',
         status: 200,
         contentType: 'text/html',
-        contentLength: 123
+        contentLength: 123,
       });
     });
 
@@ -91,14 +104,14 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'test-org',
-        key: 'image.jpg'
+        key: 'image.jpg',
       };
 
       const mockS3Response = {
         Body: 'image-data',
         $metadata: { httpStatusCode: 200 },
         ContentType: 'image/jpeg',
-        ContentLength: 456
+        ContentLength: 456,
       };
 
       mockSend.mockResolvedValue(mockS3Response);
@@ -116,7 +129,7 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'test-org',
-        key: 'nonexistent-key'
+        key: 'nonexistent-key',
       };
 
       mockSend.mockRejectedValue(new Error('Object not found'));
@@ -125,7 +138,7 @@ describe('getObject', () => {
 
       expect(result).toEqual({
         body: '',
-        status: 404
+        status: 404,
       });
     });
 
@@ -134,7 +147,7 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'test-org',
-        key: 'test-key'
+        key: 'test-key',
       };
 
       mockSend.mockRejectedValue(new Error('Network error'));
@@ -143,7 +156,7 @@ describe('getObject', () => {
 
       expect(result).toEqual({
         body: '',
-        status: 404
+        status: 404,
       });
     });
   });
@@ -154,21 +167,21 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'my-org',
-        key: 'site/page.html'
+        key: 'site/page.html',
       };
 
       mockSend.mockResolvedValue({
         Body: 'content',
         $metadata: { httpStatusCode: 200 },
         ContentType: 'text/html',
-        ContentLength: 100
+        ContentLength: 100,
       });
 
       await getObject(mockEnv, mockDaCtx);
 
       expect(GetObjectCommand).toHaveBeenCalledWith({
         Bucket: 'test-bucket',
-        Key: 'my-org/site/page.html'
+        Key: 'my-org/site/page.html',
       });
     });
 
@@ -177,21 +190,21 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'custom-bucket',
         org: 'test-org',
-        key: 'test-key'
+        key: 'test-key',
       };
 
       mockSend.mockResolvedValue({
         Body: 'content',
         $metadata: { httpStatusCode: 200 },
         ContentType: 'text/html',
-        ContentLength: 100
+        ContentLength: 100,
       });
 
       await getObject(mockEnv, mockDaCtx);
 
       expect(GetObjectCommand).toHaveBeenCalledWith({
         Bucket: 'custom-bucket',
-        Key: 'test-org/test-key'
+        Key: 'test-org/test-key',
       });
     });
   });
@@ -202,14 +215,14 @@ describe('getObject', () => {
       const mockDaCtx = {
         bucket: 'test-bucket',
         org: 'test-org',
-        key: 'test-key'
+        key: 'test-key',
       };
 
       mockSend.mockResolvedValue({
         Body: 'content',
         $metadata: { httpStatusCode: 200 },
         ContentType: 'text/html',
-        ContentLength: 100
+        ContentLength: 100,
       });
 
       await getObject(mockEnv, mockDaCtx);
@@ -220,8 +233,8 @@ describe('getObject', () => {
         endpoint: 'https://test-s3-endpoint.com',
         credentials: {
           accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key'
-        }
+          secretAccessKey: 'test-secret-key',
+        },
       });
     });
   });

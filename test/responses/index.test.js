@@ -1,3 +1,14 @@
+/*
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 import { describe, test, expect } from 'vitest';
 import { daResp, get404, getRobots } from '../../src/responses/index.js';
 
@@ -5,7 +16,7 @@ describe('daResp', () => {
   test('should create response with basic properties', () => {
     const input = {
       body: 'test content',
-      status: 200
+      status: 200,
     };
 
     const response = daResp(input);
@@ -21,7 +32,7 @@ describe('daResp', () => {
     const input = {
       body: '<html>content</html>',
       status: 200,
-      contentType: 'text/html'
+      contentType: 'text/html',
     };
 
     const response = daResp(input);
@@ -32,7 +43,7 @@ describe('daResp', () => {
   test('should not include content type when not provided', () => {
     const input = {
       body: 'plain text',
-      status: 200
+      status: 200,
     };
 
     const response = daResp(input);
@@ -44,7 +55,7 @@ describe('daResp', () => {
   test('should handle different status codes', () => {
     const input = {
       body: 'error message',
-      status: 404
+      status: 404,
     };
 
     const response = daResp(input);
@@ -55,7 +66,7 @@ describe('daResp', () => {
   test('should handle empty body', () => {
     const input = {
       body: '',
-      status: 200
+      status: 200,
     };
 
     const response = daResp(input);
@@ -67,7 +78,7 @@ describe('daResp', () => {
   test('should handle null body', () => {
     const input = {
       body: null,
-      status: 200
+      status: 200,
     };
 
     const response = daResp(input);
@@ -78,7 +89,7 @@ describe('daResp', () => {
   test('should always include CORS headers', () => {
     const input = {
       body: 'test',
-      status: 500
+      status: 500,
     };
 
     const response = daResp(input);

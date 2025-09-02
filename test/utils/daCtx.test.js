@@ -1,9 +1,20 @@
+/*
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 import { describe, test, expect } from 'vitest';
 import { getDaCtx } from '../../src/utils/daCtx.js';
 
 describe('getDaCtx', () => {
   const mockEnv = {
-    AEM_BUCKET_NAME: 'test-bucket'
+    AEM_BUCKET_NAME: 'test-bucket',
   };
 
   describe('basic path parsing', () => {
@@ -22,7 +33,7 @@ describe('getDaCtx', () => {
         key: 'site.html',
         propsKey: 'site.html.props',
         pathname: '/site',
-        aemPathname: '/site'
+        aemPathname: '/site',
       });
     });
 
@@ -41,7 +52,7 @@ describe('getDaCtx', () => {
         key: 'site/page.html',
         propsKey: 'site/page.html.props',
         pathname: '/site/page',
-        aemPathname: '/page'
+        aemPathname: '/page',
       });
     });
 
@@ -60,7 +71,7 @@ describe('getDaCtx', () => {
         key: 'site/page/subpage.html',
         propsKey: 'site/page/subpage.html.props',
         pathname: '/site/page/subpage',
-        aemPathname: '/page/subpage'
+        aemPathname: '/page/subpage',
       });
     });
   });
@@ -81,7 +92,7 @@ describe('getDaCtx', () => {
         key: 'site/page.html.html',
         propsKey: 'site/page.html.html.props',
         pathname: '/site/page',
-        aemPathname: '/page'
+        aemPathname: '/page',
       });
     });
 
@@ -100,7 +111,7 @@ describe('getDaCtx', () => {
         key: 'site/image.jpg',
         propsKey: 'site/image.jpg.props',
         pathname: '/site/image.jpg',
-        aemPathname: '/image.jpg'
+        aemPathname: '/image.jpg',
       });
     });
 
@@ -119,7 +130,7 @@ describe('getDaCtx', () => {
         key: 'site/config.prod.json',
         propsKey: 'site/config.prod.json.props',
         pathname: '/site/config.prod.json',
-        aemPathname: '/config.prod.json'
+        aemPathname: '/config.prod.json',
       });
     });
   });
@@ -140,7 +151,7 @@ describe('getDaCtx', () => {
         key: 'site/index.html',
         propsKey: 'site/index.html.props',
         pathname: '/site/index',
-        aemPathname: '/index'
+        aemPathname: '/index',
       });
     });
 
@@ -159,7 +170,7 @@ describe('getDaCtx', () => {
         key: '.html',
         propsKey: '.html.props',
         pathname: '/',
-        aemPathname: '/'
+        aemPathname: '/',
       });
     });
 
@@ -178,7 +189,7 @@ describe('getDaCtx', () => {
         key: '.html',
         propsKey: '.html.props',
         pathname: '/',
-        aemPathname: '/'
+        aemPathname: '/',
       });
     });
 
@@ -197,7 +208,7 @@ describe('getDaCtx', () => {
         key: 'site/page.html',
         propsKey: 'site/page.html.props',
         pathname: '/site/page',
-        aemPathname: '/page'
+        aemPathname: '/page',
       });
     });
   });

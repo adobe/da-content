@@ -1,29 +1,75 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-
-// Mock all the modules
-vi.mock('./src/utils/daCtx.js', () => ({
-  getDaCtx: vi.fn()
-}));
-
-vi.mock('./src/storage/object.js', () => ({
-  default: vi.fn()
-}));
-
-vi.mock('./src/storage/admin.js', () => ({
-  default: vi.fn()
-}));
-
-vi.mock('./src/responses/index.js', () => ({
-  daResp: vi.fn(),
-  get404: vi.fn(),
-  getRobots: vi.fn()
-}));
+/*
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+import {
+  describe, test, expect, vi, beforeEach,
+} from 'vitest';
 
 // Import after mocking
-import { getDaCtx } from './src/utils/daCtx.js';
-import getObject from './src/storage/object.js';
-import getFromAdmin from './src/storage/admin.js';
-import { daResp, get404, getRobots } from './src/responses/index.js';
+import { getDaCtx } from '../src/utils/daCtx.js';
+import getObject from '../src/storage/object.js';
+import getFromAdmin from '../src/storage/admin.js';
+import { daResp, get404, getRobots } from '../src/responses/index.js';
+
+// Mock all the modules
+vi.mock('../src/utils/daCtx.js', () => ({
+  getDaCtx: vi.fn(),
+}));
+
+vi.mock('../src/storage/object.js', () => ({
+  default: vi.fn(),
+}));
+
+vi.mock('../src/storage/admin.js', () => ({
+  default: vi.fn(),
+}));
+
+vi.mock('../src/responses/index.js', () => ({
+  daResp: vi.fn(),
+  get404: vi.fn(),
+  getRobots: vi.fn(),
+}));
+
+// Mock the mainHandler object to match actual implementation
+const mainHandler = {
+  fetch: async (req, env) => {
+    const url = new URL(req.url);
+    const { pathname } = url;
+
+    if (pathname === '/favicon.ico') return get404();
+    if (pathname === '/robots.txt') return getRobots();
+
+    const [, org, site] = url.pathname.split('/');
+
+    if (!org || !site) return get404();
+
+    function isAllowListed(e, r, o) {
+      return e.ADMIN_EXCEPTED_ORGS?.split(',').includes(o)
+        && r.headers.get('cf-connecting-ip') === e.HELIX_ADMIN_IP;
+    }
+
+    try {
+      if (isAllowListed(env, req, org)) {
+        const daCtx = getDaCtx(env, pathname);
+        const objResp = await getObject(env, daCtx);
+        return daResp(objResp);
+      } else {
+        return await getFromAdmin(req, env);
+      }
+    } catch (error) {
+      console.error('Error in mainHandler.fetch:', error);
+      return daResp({ body: 'Internal Server Error', status: 500 });
+    }
+  },
+};
 
 describe('mainHandler.fetch', () => {
   let mockEnv;
@@ -32,17 +78,17 @@ describe('mainHandler.fetch', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockEnv = {
       AEM_BUCKET_NAME: 'test-bucket',
       ADMIN_EXCEPTED_ORGS: 'org1,org2,org3',
-      HELIX_ADMIN_IP: '192.168.1.1'
+      HELIX_ADMIN_IP: '192.168.1.1',
     };
 
     mockReq = {
       method: 'GET',
       url: 'https://example.com/org/site/page',
-      headers: new Map()
+      headers: new Map(),
     };
 
     mockDaCtx = {
@@ -56,7 +102,7 @@ describe('mainHandler.fetch', () => {
       key: 'site/page.html',
       propsKey: 'site/page/page.html.props',
       pathname: '/site/page',
-      aemPathname: '/page'
+      aemPathname: '/page',
     };
 
     // Mock the utility functions
@@ -64,12 +110,12 @@ describe('mainHandler.fetch', () => {
     getObject.mockResolvedValue({
       body: 'content',
       status: 200,
-      contentType: 'text/html'
+      contentType: 'text/html',
     });
     getFromAdmin.mockResolvedValue({
       body: 'admin content',
       status: 200,
-      contentType: 'text/html'
+      contentType: 'text/html',
     });
     daResp.mockImplementation(({ body, status }) => new Response(body, { status }));
     get404.mockReturnValue(new Response('', { status: 404 }));
@@ -296,36 +342,3 @@ describe('mainHandler.fetch', () => {
     });
   });
 });
-
-// Mock the mainHandler object to match actual implementation
-const mainHandler = {
-  fetch: async (req, env) => {
-    const url = new URL(req.url);
-    const { pathname } = url;
-
-    if (pathname === '/favicon.ico') return get404();
-    if (pathname === '/robots.txt') return getRobots();
-
-    const [, org, site] = url.pathname.split('/');
-
-    if (!org || !site) return get404();
-
-    function isAllowListed(env, req) {
-      return env.ADMIN_EXCEPTED_ORGS?.split(',').includes(org)
-        && req.headers.get('cf-connecting-ip') === env.HELIX_ADMIN_IP;
-    }
-
-    try {
-      if (isAllowListed(env, req)) {
-        const daCtx = getDaCtx(env, pathname);
-        const objResp = await getObject(env, daCtx);
-        return daResp(objResp);
-      } else {
-        return await getFromAdmin(req, env);
-      }
-    } catch (error) {
-      console.error('Error in mainHandler.fetch:', error);
-      return daResp({ body: 'Internal Server Error', status: 500 });
-    }
-  }
-};
