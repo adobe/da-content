@@ -7,9 +7,13 @@
     "deploy:prod": "wrangler deploy",
     "deploy:stage": "wrangler deploy --env stage",
     "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
   },
   "devDependencies": {
+    "vitest": "^1.5.0",
     "wrangler": "4.33.1"
   },
   "dependencies": {
