@@ -18,7 +18,8 @@ export default defineConfig({
     setupFiles: ['./test/setup.js'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json-summary', 'json', 'html'],
+      reportOnFailure: true,
       exclude: [
         'node_modules/',
         'test/',
