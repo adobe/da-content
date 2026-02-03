@@ -34,6 +34,21 @@ function isAllowListed(env, req, org) {
     && req.headers.get('cf-connecting-ip') === HELIX_ADMIN_IP;
 }
 
+function shouldGetFromStorage(env, req, pathname, org) {
+  // Admin opt-in orgs always use admin, even for embeddable assets
+  if (env.ADMIN_OPTIN_ORGS?.split(',').includes(org)) {
+    return false;
+  }
+
+  // Embeddable assets go to storage by default
+  if (isEmbeddableAsset(pathname)) {
+    return true;
+  }
+
+  // Allowlisted orgs use storage
+  return isAllowListed(env, req, org);
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -46,7 +61,7 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (isEmbeddableAsset(pathname) || isAllowListed(env, req, org)) {
+    if (shouldGetFromStorage(env, req, pathname, org)) {
       return getFromStorage(pathname, env);
     }
 
