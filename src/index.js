@@ -11,6 +11,7 @@
  */
 import { getDaCtx } from './utils/daCtx.js';
 import getObject from './storage/object.js';
+import { getCookie } from './cookie.js';
 
 import { get404, daResp, getRobots } from './responses/index.js';
 import getFromAdmin from './storage/admin.js';
@@ -57,7 +58,11 @@ export default {
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
 
-    const [, org, site] = url.pathname.split('/');
+    const [, org, site, root] = url.pathname.split('/');
+
+    if (root === '.gimme_cookie') {
+      return getCookie(req, org, site);
+    }
 
     if (!org || !site) return get404();
 
