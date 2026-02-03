@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { daResp } from './responses/index.js';
+
 export const TRUSTED_ORIGINS = [
   'https://da.live',
   'http://localhost:3000',
