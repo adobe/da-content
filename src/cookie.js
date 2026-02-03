@@ -23,8 +23,25 @@ export const DEFAULT_CORS_HEADERS = {
   'Content-Type': 'text/plain',
 };
 
+/**
+ * Check if the origin is trusted.
+ * Supports exact matches and pattern matching for *.aem.live and *.aem.page domains.
+ */
+function isTrustedOrigin(origin) {
+  if (!origin) return false;
+
+  // Check exact matches
+  if (TRUSTED_ORIGINS.includes(origin)) {
+    return true;
+  }
+
+  // Check pattern: https://<alphanumeric>--da-live--adobe.aem.(live|page)
+  const pattern = /^https:\/\/[a-zA-Z0-9]+-?-da-live--adobe\.aem\.(live|page)$/;
+  return pattern.test(origin);
+}
+
 export function getCookie(req, org, site) {
-  if (!TRUSTED_ORIGINS.includes(req.headers.get('Origin'))) {
+  if (!isTrustedOrigin(req.headers.get('Origin'))) {
     return daResp({ body: '403 Forbidden', status: 403, contentType: 'text/plain' });
   }
 
