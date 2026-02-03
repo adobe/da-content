@@ -13,7 +13,6 @@ import { daResp } from './responses/index.js';
 export const TRUSTED_ORIGINS = [
   'https://da.live',
   'http://localhost:3000',
-  'https://image--da-live--adobe.aem.live'
 ];
 
 export const DEFAULT_CORS_HEADERS = {
