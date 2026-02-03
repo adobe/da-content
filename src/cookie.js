@@ -24,7 +24,7 @@ export const DEFAULT_CORS_HEADERS = {
 
 /**
  * Check if the origin is trusted.
- * Supports exact matches and pattern matching for *.aem.live and *.aem.page domains.
+ * Supports exact matches and pattern matching for DA aem.live and aem.page domains.
  */
 function isTrustedOrigin(origin) {
   if (!origin) return false;
