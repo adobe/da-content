@@ -54,7 +54,7 @@ function canonicalizePathname(pathname) {
 
   // remove special characters, empty parts, . and ..
   canonicalized = `/${canonicalized.split('/')
-    .map((part) => part.replace(/[^a-z0-9.-]/gi, ''))
+    .map((part) => part.replace(/[^a-z0-9.-_]/gi, ''))
     .filter((part) => part !== '' && part !== '.' && part !== '..')
     .join('/')}`;
 
