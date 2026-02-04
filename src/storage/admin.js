@@ -11,6 +11,7 @@
  */
 import { parse } from 'cookie';
 import { daResp } from '../responses/index.js';
+import { isEmbeddableAsset } from './utils.js';
 
 const AMDMIN_URL = 'https://admin.da.live/source';
 
@@ -45,6 +46,8 @@ function getAuthHeader(req) {
 
 function canonicalizePathname(pathname) {
   let canonicalized = pathname;
+  const isAsset = isEmbeddableAsset(pathname);
+
   // all paths are lowercase
   canonicalized = canonicalized.toLowerCase();
 
@@ -52,9 +55,12 @@ function canonicalizePathname(pathname) {
     canonicalized += 'index';
   }
 
-  // remove special characters, empty parts, . and ..
-  canonicalized = `/${canonicalized.split('/')
-    .map((part) => part.replace(/[^a-z0-9.-_]/gi, ''))
+  // remove special characters (skip for assets), empty parts, . and ..
+  const parts = canonicalized.split('/');
+  canonicalized = `/${parts
+    // we needed to deactivate the special character removal for assets because
+    // we already had a lot of assets with special characters in the name
+    .map((part) => (isAsset ? part : part.replace(/[^a-z0-9.-]/gi, '')))
     .filter((part) => part !== '' && part !== '.' && part !== '..')
     .join('/')}`;
 
