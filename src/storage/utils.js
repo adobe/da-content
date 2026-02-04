@@ -9,6 +9,12 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
+const EMBEDDABLE_ASSETS_EXTENSIONS = ['.avif', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.mp4', '.ico'];
+
+export function isEmbeddableAsset(pathname) {
+  return EMBEDDABLE_ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext));
+}
+
 export default function getS3Config(env) {
   return {
     region: 'auto',
