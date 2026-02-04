@@ -60,7 +60,7 @@ function canonicalizePathname(pathname) {
   canonicalized = `/${parts
     // we needed to deactivate the special character removal for assets because
     // we already had a lot of assets with special characters in the name
-    .map((part) => (isAsset ? part : part.replace(/[^a-z0-9.-]/gi, '')))
+    .map((part) => (isAsset ? part : part.replace(/[^a-z0-9._-]/gi, '')))
     .filter((part) => part !== '' && part !== '.' && part !== '..')
     .join('/')}`;
 
