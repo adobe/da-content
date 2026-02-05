@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-// Optional: reduce console noise in tests (mocha + chai, no vitest)
+// Optional: reduce console noise in tests
 const noop = () => {};
 if (process.env.MOCHA_SILENT) {
   global.console = {
