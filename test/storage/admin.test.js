@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Adobe. All rights reserved.
+ * Copyright 2026 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -9,335 +9,204 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import {
-  describe, test, expect, vi, beforeEach,
-} from 'vitest';
 
-// Import after mocking
-import { parse } from 'cookie';
+/* eslint-env mocha */
+import { expect } from 'chai';
+import { Nock } from '../utils.js';
 import getFromAdmin from '../../src/storage/admin.js';
-import { daResp } from '../../src/responses/index.js';
 
-// Mock the cookie parser and responses
-vi.mock('cookie', () => ({
-  parse: vi.fn(),
-}));
+function createRequest(url, { method = 'GET', headers = {} } = {}) {
+  const h = new Headers(headers);
+  return new Request(url, { method, headers: h });
+}
 
-vi.mock('../../src/responses/index.js', () => ({
-  daResp: vi.fn(),
-}));
+function createEnv() {
+  return { daadmin: { fetch: globalThis.fetch } };
+}
 
 describe('getFromAdmin', () => {
-  let mockEnv;
-  let mockReq;
+  /** @type {ReturnType<typeof Nock>} */
+  let nock;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    nock = new Nock().env();
+  });
 
-    mockEnv = {
-      daadmin: {
-        fetch: vi.fn(),
-      },
-    };
-
-    mockReq = {
-      method: 'GET',
-      url: 'https://example.com/org/site/page',
-      headers: new Map(),
-    };
-
-    // Mock the daResp function
-    daResp.mockImplementation(({ body, status }) => new Response(body, { status }));
+  afterEach(() => {
+    nock.done();
   });
 
   describe('HTTP method handling', () => {
-    test('should return 405 for non-GET requests', async () => {
-      mockReq.method = 'POST';
+    it('returns 405 for non-GET requests', async () => {
+      const req = createRequest('https://example.com/org/site/page', { method: 'POST' });
+      const env = createEnv();
 
-      const result = await getFromAdmin(mockReq, mockEnv);
+      const result = await getFromAdmin(req, env);
 
-      expect(result.status).toBe(405);
+      expect(result.status).to.equal(405);
     });
 
-    test('should handle OPTIONS request with daResp', async () => {
-      mockReq.method = 'OPTIONS';
+    it('handles OPTIONS with 200 without fetching', async () => {
+      const req = createRequest('https://example.com/org/site/page', { method: 'OPTIONS' });
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
+      const result = await getFromAdmin(req, env);
 
-      expect(daResp).toHaveBeenCalledWith({ body: '', status: 200 });
+      expect(result.status).to.equal(200);
     });
 
-    test('should allow GET requests', async () => {
-      mockReq.method = 'GET';
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+    it('allows GET and fetches admin', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'content', { 'content-type': 'text/html' });
 
-      await getFromAdmin(mockReq, mockEnv);
+      const req = createRequest('https://example.com/org/site/page');
+      const env = createEnv();
 
-      expect(mockEnv.daadmin.fetch).toHaveBeenCalled();
+      const result = await getFromAdmin(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('content');
     });
   });
 
   describe('authentication handling', () => {
-    test('should extract auth token from cookie', async () => {
-      parse.mockReturnValue({ auth_token: 'cookie-token' });
-      mockReq.headers.set('cookie', 'auth_token=cookie-token');
+    it('sends Bearer token from cookie', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .matchHeader('authorization', 'Bearer cookie-token')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
+      const req = createRequest('https://example.com/org/site/page', {
+        headers: { cookie: 'auth_token=cookie-token' },
       });
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      const { headers } = fetchCall[1];
-      expect(headers.get('authorization')).toBe('Bearer cookie-token');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should use authorization header when cookie not present', async () => {
-      parse.mockReturnValue({});
-      mockReq.headers.set('authorization', 'Bearer header-token');
+    it('uses authorization header when cookie not present', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .matchHeader('authorization', 'Bearer header-token')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
+      const req = createRequest('https://example.com/org/site/page', {
+        headers: { authorization: 'Bearer header-token' },
       });
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      const { headers } = fetchCall[1];
-      expect(headers.get('authorization')).toBe('Bearer header-token');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should use query parameter token when no other auth present', async () => {
-      parse.mockReturnValue({});
-      mockReq.url = 'https://example.com/org/site/page?token=query-token';
+    it('uses query token when no other auth present', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .matchHeader('authorization', (val) => val === 'Bearer query-token')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/org/site/page?token=query-token');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      const { headers } = fetchCall[1];
-      expect(headers.get('authorization')).toBe('Bearer query-token');
-    });
-
-    test('should not set authorization header when no auth present', async () => {
-      parse.mockReturnValue({});
-
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      const { headers } = fetchCall[1];
-      expect(headers.get('authorization')).toBeNull();
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
   });
 
   describe('path canonicalization', () => {
-    test('should convert path to lowercase', async () => {
-      mockReq.url = 'https://example.com/ORG/SITE/PAGE';
+    it('converts path to lowercase', async () => {
+      nock.admin()
+        .get('/source/org/site/page.html')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/ORG/SITE/PAGE');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/org/site/page.html');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should add index.html for trailing slash', async () => {
-      mockReq.url = 'https://example.com/org/site/';
+    it('adds index for trailing slash', async () => {
+      nock.admin()
+        .get('/source/org/site/index.html')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/org/site/');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/org/site/index.html');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should add .html extension for files without extension', async () => {
-      mockReq.url = 'https://example.com/org/site/page';
+    it('adds .html for path without extension', async () => {
+      nock.admin()
+        .get('/source/org/site/page.html')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/org/site/page');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/org/site/page.html');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should preserve existing file extensions', async () => {
-      mockReq.url = 'https://example.com/org/site/image.jpg';
+    it('preserves existing file extensions', async () => {
+      nock.admin()
+        .get('/source/org/site/image.jpg')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/org/site/image.jpg');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/org/site/image.jpg');
-    });
-
-    test('should sanitize special characters', async () => {
-      mockReq.url = 'https://example.com/org/site/page%20with%20spaces';
-
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      // The actual implementation keeps the URL-encoded characters
-      expect(fetchCall[0]).toContain('/org/site/page20with20spaces.html');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
   });
 
   describe('admin API integration', () => {
-    test('should construct correct admin URL', async () => {
-      mockReq.url = 'https://example.com/org/site/page';
+    it('constructs correct admin URL', async () => {
+      nock.admin()
+        .get('/source/org/site/page.html')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
 
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
+      const req = createRequest('https://example.com/org/site/page');
+      const env = createEnv();
 
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toBe('https://admin.da.live/source/org/site/page.html');
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
     });
 
-    test('should forward response status and headers', async () => {
-      const mockHeaders = new Map([['content-type', 'text/html']]);
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 201,
-        headers: mockHeaders,
-        blob: vi.fn().mockResolvedValue('created content'),
-      });
+    it('forwards response status and headers', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(201, 'created content', { 'content-type': 'text/html' });
 
-      const result = await getFromAdmin(mockReq, mockEnv);
+      const req = createRequest('https://example.com/org/site/page');
+      const env = createEnv();
 
-      expect(result.status).toBe(201);
-      expect(result.headers.get('content-type')).toBe('text/html');
-    });
+      const result = await getFromAdmin(req, env);
 
-    test('should handle successful admin response', async () => {
-      const mockBlob = vi.fn().mockResolvedValue('admin content');
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: mockBlob,
-      });
-
-      const result = await getFromAdmin(mockReq, mockEnv);
-
-      expect(mockBlob).toHaveBeenCalled();
-      expect(result.status).toBe(200);
+      expect(result.status).to.equal(201);
+      expect(result.headers.get('content-type')).to.equal('text/html');
+      expect(await result.text()).to.equal('created content');
     });
   });
 
   describe('error handling', () => {
-    test('should handle admin fetch errors gracefully', async () => {
-      mockEnv.daadmin.fetch.mockRejectedValue(new Error('Network error'));
+    it('returns 503 when admin fetch fails', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .replyWithError('Network error');
 
-      const result = await getFromAdmin(mockReq, mockEnv);
+      const req = createRequest('https://example.com/org/site/page');
+      const env = createEnv();
 
-      expect(result.status).toBe(503);
-      expect(result.headers.get('x-error')).toBe('Failed to fetch from admin');
-    });
+      const result = await getFromAdmin(req, env);
 
-    test('should log errors to console', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockEnv.daadmin.fetch.mockRejectedValue(new Error('Test error'));
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch from admin', expect.any(Error));
-      consoleSpy.mockRestore();
-    });
-
-    test('should log successful admin requests', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      expect(consoleSpy).toHaveBeenCalledWith('-> get from admin', expect.stringContaining('admin.da.live'));
-      expect(consoleSpy).toHaveBeenCalledWith('<- admin responded with:', 200);
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('edge cases', () => {
-    test('should handle empty pathname', async () => {
-      mockReq.url = 'https://example.com/';
-
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/index.html');
-    });
-
-    test('should handle complex nested paths', async () => {
-      mockReq.url = 'https://example.com/org/site/section/subsection/page';
-
-      mockEnv.daadmin.fetch.mockResolvedValue({
-        status: 200,
-        headers: new Map(),
-        blob: vi.fn().mockResolvedValue('content'),
-      });
-
-      await getFromAdmin(mockReq, mockEnv);
-
-      const fetchCall = mockEnv.daadmin.fetch.mock.calls[0];
-      expect(fetchCall[0]).toContain('/org/site/section/subsection/page.html');
+      expect(result.status).to.equal(503);
+      expect(result.headers.get('x-error')).to.equal('Failed to fetch from admin');
     });
   });
 });

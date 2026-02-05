@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Adobe. All rights reserved.
+ * Copyright 2026 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -9,7 +9,9 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { describe, test, expect } from 'vitest';
+
+/* eslint-env mocha */
+import { expect } from 'chai';
 import { getDaCtx } from '../../src/utils/daCtx.js';
 
 describe('getDaCtx', () => {
@@ -18,11 +20,11 @@ describe('getDaCtx', () => {
   };
 
   describe('basic path parsing', () => {
-    test('should parse simple org/site path', () => {
+    it('parses simple org/site path', () => {
       const pathname = '/org/site';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: undefined,
@@ -37,11 +39,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should parse org/site/page path', () => {
+    it('parses org/site/page path', () => {
       const pathname = '/org/site/page';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -56,11 +58,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should parse org/site/page/subpage path', () => {
+    it('parses org/site/page/subpage path', () => {
       const pathname = '/org/site/page/subpage';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -77,11 +79,11 @@ describe('getDaCtx', () => {
   });
 
   describe('file extensions', () => {
-    test('should handle HTML files', () => {
+    it('handles HTML files', () => {
       const pathname = '/org/site/page.html';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -96,11 +98,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should handle other file types', () => {
+    it('handles other file types', () => {
       const pathname = '/org/site/image.jpg';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -115,11 +117,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should handle files with multiple dots', () => {
+    it('handles files with multiple dots', () => {
       const pathname = '/org/site/config.prod.json';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -136,11 +138,11 @@ describe('getDaCtx', () => {
   });
 
   describe('edge cases', () => {
-    test('should handle trailing slash', () => {
+    it('handles trailing slash', () => {
       const pathname = '/org/site/';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -155,11 +157,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should handle root path', () => {
+    it('handles root path', () => {
       const pathname = '/';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: '',
         site: undefined,
@@ -174,11 +176,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should handle single org path', () => {
+    it('handles single org path', () => {
       const pathname = '/org';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: undefined,
@@ -193,11 +195,11 @@ describe('getDaCtx', () => {
       });
     });
 
-    test('should handle empty path parts', () => {
+    it('handles empty path parts', () => {
       const pathname = '/org//site//page';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result).toEqual({
+      expect(result).to.deep.equal({
         bucket: 'test-bucket',
         org: 'org',
         site: 'site',
@@ -214,23 +216,23 @@ describe('getDaCtx', () => {
   });
 
   describe('case sensitivity', () => {
-    test('should convert to lowercase', () => {
+    it('converts to lowercase', () => {
       const pathname = '/ORG/SITE/PAGE';
       const result = getDaCtx(mockEnv, pathname);
 
-      expect(result.org).toBe('org');
-      expect(result.site).toBe('site');
-      expect(result.name).toBe('page');
+      expect(result.org).to.equal('org');
+      expect(result.site).to.equal('site');
+      expect(result.name).to.equal('page');
     });
   });
 
   describe('bucket configuration', () => {
-    test('should use environment bucket name', () => {
+    it('uses environment bucket name', () => {
       const customEnv = { AEM_BUCKET_NAME: 'custom-bucket' };
       const pathname = '/org/site';
       const result = getDaCtx(customEnv, pathname);
 
-      expect(result.bucket).toBe('custom-bucket');
+      expect(result.bucket).to.equal('custom-bucket');
     });
   });
 });

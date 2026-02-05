@@ -9,16 +9,14 @@
     "dev": "wrangler dev",
     "lint": "eslint .",
     "start": "wrangler dev",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "mocha 'test/**/*.test.js'"
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "3.0.9",
-    "@vitest/coverage-v8": "3.2.4",
+    "chai": "5.1.2",
     "eslint": "9.4.0",
-    "vitest": "3.2.4",
+    "mocha": "10.8.2",
+    "nock": "15.0.0",
     "wrangler": "4.33.1"
   },
   "dependencies": {

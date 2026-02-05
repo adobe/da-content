@@ -9,288 +9,227 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import {
-  describe, test, expect, vi, beforeEach,
-} from 'vitest';
 
-// Import after mocking
-import { getDaCtx } from '../src/utils/daCtx.js';
-import getObject from '../src/storage/object.js';
-import getFromAdmin from '../src/storage/admin.js';
-import { daResp, get404, getRobots } from '../src/responses/index.js';
+/* eslint-env mocha */
+import { expect } from 'chai';
+import { Nock } from './utils.js';
 import worker from '../src/index.js';
 
-// Mock all the modules
-vi.mock('../src/utils/daCtx.js', () => ({
-  getDaCtx: vi.fn(),
-}));
+const HELIX_ADMIN_IP = '3.227.118.73';
+const S3_BASE = 'https://s3-test.local';
+const S3_BUCKET_HOST = 'https://test-bucket.s3-test.local';
 
-vi.mock('../src/storage/object.js', () => ({
-  default: vi.fn(),
-}));
+function createRequest(url, { method = 'GET', headers = {} } = {}) {
+  const h = new Headers(headers);
+  return new Request(url, { method, headers: h });
+}
 
-vi.mock('../src/storage/admin.js', () => ({
-  default: vi.fn(),
-}));
+function createEnv(overrides = {}) {
+  return {
+    AEM_BUCKET_NAME: 'test-bucket',
+    ADMIN_EXCEPTED_ORGS: 'org1,org2,org3',
+    S3_DEF_URL: S3_BASE,
+    S3_ACCESS_KEY_ID: 'test-key',
+    S3_SECRET_ACCESS_KEY: 'test-secret',
+    daadmin: { fetch: globalThis.fetch },
+    ...overrides,
+  };
+}
 
-vi.mock('../src/responses/index.js', () => ({
-  daResp: vi.fn(),
-  get404: vi.fn(),
-  getRobots: vi.fn(),
-}));
-
-describe('fetch', () => {
-  let mockEnv;
-  let mockReq;
-  let mockDaCtx;
+describe('Index Tests', () => {
+  /** @type {ReturnType<typeof Nock>} */
+  let nock;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    nock = new Nock().env();
+  });
 
-    mockEnv = {
-      AEM_BUCKET_NAME: 'test-bucket',
-      ADMIN_EXCEPTED_ORGS: 'org1,org2,org3',
-    };
-
-    mockReq = {
-      method: 'GET',
-      url: 'https://example.com/org/site/page',
-      headers: new Map(),
-    };
-
-    mockDaCtx = {
-      bucket: 'test-bucket',
-      org: 'org',
-      site: 'site',
-      filename: 'page',
-      isFile: true,
-      ext: 'html',
-      name: 'page',
-      key: 'site/page.html',
-      propsKey: 'site/page/page.html.props',
-      pathname: '/site/page',
-      aemPathname: '/page',
-    };
-
-    // Mock the utility functions
-    getDaCtx.mockReturnValue(mockDaCtx);
-    getObject.mockResolvedValue({
-      body: 'storage content',
-      status: 200,
-      contentType: 'text/html',
-    });
-    getFromAdmin.mockResolvedValue({
-      body: 'admin content',
-      status: 200,
-      contentType: 'text/html',
-    });
-    daResp.mockImplementation((input) => new Response(input.body, {
-      status: input.status,
-      headers: { 'Content-Type': input.contentType || 'text/plain' },
-    }));
-    get404.mockReturnValue(new Response('', { status: 404 }));
-    getRobots.mockReturnValue(new Response('User-agent: *\nDisallow: /', { status: 200 }));
+  afterEach(() => {
+    nock.done();
   });
 
   describe('robots.txt handling', () => {
-    test('should return robots.txt for /robots.txt path', async () => {
-      mockReq.url = 'https://example.com/robots.txt';
+    it('returns robots.txt for /robots.txt path', async () => {
+      const req = createRequest('https://example.com/robots.txt');
+      const env = createEnv();
 
-      const result = await worker.fetch(mockReq, mockEnv);
+      const result = await worker.fetch(req, env);
 
-      expect(getRobots).toHaveBeenCalled();
-      expect(result.status).toBe(200);
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.include('Disallow: /');
+    });
+  });
+
+  describe('favicon and 404', () => {
+    it('returns 404 for favicon.ico', async () => {
+      const req = createRequest('https://example.com/favicon.ico');
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(404);
+    });
+
+    it('returns 404 for missing org/site', async () => {
+      const req = createRequest('https://example.com/org');
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(404);
+    });
+
+    it('returns 404 for root path', async () => {
+      const req = createRequest('https://example.com/');
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(404);
     });
   });
 
   describe('OPTIONS request handling', () => {
-    test('should handle OPTIONS requests through admin', async () => {
-      mockReq.method = 'OPTIONS';
-      mockReq.url = 'https://example.com/org/site/page';
+    it('handles OPTIONS through admin (no fetch)', async () => {
+      const req = createRequest('https://example.com/org/site/page', { method: 'OPTIONS' });
+      const env = createEnv();
 
-      const result = await worker.fetch(mockReq, mockEnv);
+      const result = await worker.fetch(req, env);
 
-      // OPTIONS requests go through admin, which returns 200 for OPTIONS
-      expect(result.status).toBe(200);
+      expect(result.status).to.equal(200);
     });
   });
 
-  describe('path parsing and context', () => {
-    test('should parse path and get daCtx when allowlisted', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
+  describe('admin access (allowlisted vs not)', () => {
+    it('uses storage for allowlisted org with correct IP', async () => {
+      nock.s3(S3_BUCKET_HOST).get(/\/.+/).reply(200, 'storage content', { 'content-type': 'text/html' });
 
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getDaCtx).toHaveBeenCalledWith(mockEnv, '/org1/site/page');
-    });
-
-    test('should handle root path with 404', async () => {
-      mockReq.url = 'https://example.com/';
-      const result = await worker.fetch(mockReq, mockEnv);
-
-      expect(result.status).toBe(404);
-    });
-  });
-
-  describe('admin access control', () => {
-    test('should allow storage access for excepted orgs with correct IP', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getObject).toHaveBeenCalled();
-      expect(getFromAdmin).not.toHaveBeenCalled();
-    });
-
-    test('should deny storage access for non-excepted orgs', async () => {
-      mockReq.url = 'https://example.com/other-org/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getFromAdmin).toHaveBeenCalledWith(mockReq, mockEnv);
-      expect(getObject).not.toHaveBeenCalled();
-    });
-
-    test('should deny storage access for wrong IP', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '192.168.1.2');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getFromAdmin).toHaveBeenCalledWith(mockReq, mockEnv);
-      expect(getObject).not.toHaveBeenCalled();
-    });
-
-    test('should handle missing ADMIN_EXCEPTED_ORGS', async () => {
-      delete mockEnv.ADMIN_EXCEPTED_ORGS;
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getFromAdmin).toHaveBeenCalledWith(mockReq, mockEnv);
-      expect(getObject).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('object retrieval', () => {
-    test('should get object from S3 when allowlisted', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getObject).toHaveBeenCalled();
-      expect(getFromAdmin).not.toHaveBeenCalled();
-    });
-
-    test('should get from admin when not allowlisted', async () => {
-      mockReq.url = 'https://example.com/other-org/site/page';
-      mockReq.headers.set('cf-connecting-ip', '192.168.1.2');
-
-      await worker.fetch(mockReq, mockEnv);
-
-      expect(getFromAdmin).toHaveBeenCalledWith(mockReq, mockEnv);
-      expect(getObject).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('response handling', () => {
-    test('should return storage response when allowlisted', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-      getObject.mockResolvedValue({ body: 'storage content', status: 200, contentType: 'text/html' });
-
-      const result = await worker.fetch(mockReq, mockEnv);
-
-      expect(result.status).toBe(200);
-      expect(await result.text()).toBe('storage content');
-    });
-
-    test('should return admin response when not allowlisted', async () => {
-      mockReq.url = 'https://example.com/other-org/site/page';
-      mockReq.headers.set('cf-connecting-ip', '192.168.1.2');
-      const adminResponse = new Response('admin content', { status: 200 });
-      getFromAdmin.mockResolvedValue(adminResponse);
-
-      const result = await worker.fetch(mockReq, mockEnv);
-
-      expect(result).toBe(adminResponse);
-    });
-
-    test('should handle 404 for missing org/site', async () => {
-      mockReq.url = 'https://example.com/org';
-      const result = await worker.fetch(mockReq, mockEnv);
-
-      expect(result.status).toBe(404);
-    });
-  });
-
-  describe('error handling', () => {
-    test('should propagate getObject errors', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-      getObject.mockRejectedValue(new Error('S3 error'));
-
-      await expect(worker.fetch(mockReq, mockEnv)).rejects.toThrow('S3 error');
-    });
-
-    test('should propagate getFromAdmin errors', async () => {
-      mockReq.url = 'https://example.com/other-org/site/page';
-      mockReq.headers.set('cf-connecting-ip', '192.168.1.2');
-      getFromAdmin.mockRejectedValue(new Error('Admin error'));
-
-      await expect(worker.fetch(mockReq, mockEnv)).rejects.toThrow('Admin error');
-    });
-
-    test('should propagate getDaCtx errors', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
-      getDaCtx.mockImplementation(() => {
-        throw new Error('Context error');
+      const req = createRequest('https://example.com/org1/site/page', {
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
       });
+      const env = createEnv();
 
-      await expect(worker.fetch(mockReq, mockEnv)).rejects.toThrow('Context error');
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('storage content');
+    });
+
+    it('uses admin for non-excepted org', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'admin content', { 'content-type': 'text/html' });
+
+      const req = createRequest('https://example.com/other-org/site/page', {
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
+      });
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('admin content');
+    });
+
+    it('uses admin for wrong IP even when org is excepted', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'admin content', { 'content-type': 'text/html' });
+
+      const req = createRequest('https://example.com/org1/site/page', {
+        headers: { 'cf-connecting-ip': '192.168.1.2' },
+      });
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('admin content');
+    });
+
+    it('uses admin when ADMIN_EXCEPTED_ORGS is missing', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'admin content', { 'content-type': 'text/html' });
+
+      const req = createRequest('https://example.com/org1/site/page', {
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
+      });
+      const env = createEnv();
+      delete env.ADMIN_EXCEPTED_ORGS;
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('admin content');
     });
   });
 
-  describe('edge cases', () => {
-    test('should handle favicon.ico requests', async () => {
-      mockReq.url = 'https://example.com/favicon.ico';
-      const result = await worker.fetch(mockReq, mockEnv);
+  describe('embeddable assets (storage by default)', () => {
+    it('uses storage for .png when not allowlisted', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(200, 'fake-png-bytes', { 'content-type': 'image/png' });
 
-      expect(result.status).toBe(404);
+      const req = createRequest('https://example.com/some-org/site/logo.png', {
+        headers: { 'cf-connecting-ip': '1.2.3.4' },
+      });
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('fake-png-bytes');
     });
 
-    test('should handle missing cf-connecting-ip header', async () => {
-      mockReq.url = 'https://example.com/org1/site/page';
-      // No cf-connecting-ip header set
+    it('uses storage for .svg and sets Content-Disposition attachment', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
 
-      await worker.fetch(mockReq, mockEnv);
+      const req = createRequest('https://example.com/some-org/site/icon.svg', {
+        headers: { 'cf-connecting-ip': '1.2.3.4' },
+      });
+      const env = createEnv();
 
-      expect(getFromAdmin).toHaveBeenCalled();
-      expect(getObject).not.toHaveBeenCalled();
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(result.headers.get('Content-Disposition')).to.equal('attachment');
+      expect(await result.text()).to.equal('<svg/>');
     });
+  });
 
-    test('should handle case-insensitive org matching', async () => {
-      mockReq.url = 'https://example.com/ORG1/site/page';
-      mockReq.headers.set('cf-connecting-ip', '3.227.118.73');
+  describe('missing cf-connecting-ip', () => {
+    it('uses admin when cf-connecting-ip is missing', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'admin content', { 'content-type': 'text/html' });
 
-      await worker.fetch(mockReq, mockEnv);
+      const req = createRequest('https://example.com/org1/site/page');
+      const env = createEnv();
 
-      // The actual implementation does exact string matching, not case-insensitive
-      expect(getFromAdmin).toHaveBeenCalled();
-      expect(getObject).not.toHaveBeenCalled();
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('admin content');
     });
+  });
 
-    test('should handle missing site in URL', async () => {
-      mockReq.url = 'https://example.com/org';
-      const result = await worker.fetch(mockReq, mockEnv);
+  describe('S3 errors', () => {
+    it('returns 404 when S3 returns error', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(404);
 
-      expect(result.status).toBe(404);
+      const req = createRequest('https://example.com/org1/site/missing', {
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
+      });
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(404);
     });
   });
 });

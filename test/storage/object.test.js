@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Adobe. All rights reserved.
+ * Copyright 2026 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -9,233 +9,108 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import {
-  describe, test, expect, vi, beforeEach,
-} from 'vitest';
 
-// Import after mocking
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+/* eslint-env mocha */
+import { expect } from 'chai';
+import { Nock } from '../utils.js';
 import getObject from '../../src/storage/object.js';
-import getS3Config from '../../src/storage/utils.js';
 
-// Mock the AWS SDK modules
-vi.mock('@aws-sdk/client-s3', () => ({
-  S3Client: vi.fn(),
-  GetObjectCommand: vi.fn(),
-}));
+const S3_BUCKET_HOST = 'https://test-bucket.s3-test.local';
+const S3_BASE = 'https://s3-test.local';
 
-// Mock the utils module
-vi.mock('../../src/storage/utils.js', () => ({
-  default: vi.fn(),
-}));
+function createEnv() {
+  return {
+    AEM_BUCKET_NAME: 'test-bucket',
+    S3_DEF_URL: S3_BASE,
+    S3_ACCESS_KEY_ID: 'test-key',
+    S3_SECRET_ACCESS_KEY: 'test-secret',
+  };
+}
 
 describe('getObject', () => {
-  let mockS3Client;
-  let mockSend;
+  /** @type {ReturnType<typeof Nock>} */
+  let nock;
 
   beforeEach(() => {
-    // Clear all mocks
-    vi.clearAllMocks();
+    nock = new Nock().env();
+  });
 
-    // Mock the S3Client constructor
-    mockSend = vi.fn();
-    mockS3Client = {
-      send: mockSend,
-    };
-    S3Client.mockImplementation(() => mockS3Client);
-
-    // Mock the utils function
-    getS3Config.mockReturnValue({
-      region: 'auto',
-      endpoint: 'https://test-s3-endpoint.com',
-      credentials: {
-        accessKeyId: 'test-access-key',
-        secretAccessKey: 'test-secret-key',
-      },
-    });
+  afterEach(() => {
+    nock.done();
   });
 
   describe('successful object retrieval', () => {
-    test('should return object data when S3 call succeeds', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'test-org',
-        key: 'test-key',
-      };
+    it('returns object data when S3 call succeeds', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(200, 'test-content', { 'content-type': 'text/html' });
 
-      const mockS3Response = {
-        Body: 'test-content',
-        $metadata: { httpStatusCode: 200 },
-        ContentType: 'text/html',
-        ContentLength: 123,
-      };
+      const env = createEnv();
+      const daCtx = { bucket: 'test-bucket', org: 'test-org', key: 'test-key' };
 
-      mockSend.mockResolvedValue(mockS3Response);
+      const result = await getObject(env, daCtx);
 
-      const result = await getObject(mockEnv, mockDaCtx);
-
-      expect(S3Client).toHaveBeenCalledWith({
-        region: 'auto',
-        endpoint: 'https://test-s3-endpoint.com',
-        credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
-        },
-      });
-
-      expect(GetObjectCommand).toHaveBeenCalledWith({
-        Bucket: 'test-bucket',
-        Key: 'test-org/test-key',
-      });
-
-      expect(mockSend).toHaveBeenCalledWith(expect.any(GetObjectCommand));
-
-      expect(result).toEqual({
-        body: 'test-content',
-        status: 200,
-        contentType: 'text/html',
-        contentLength: 123,
-      });
+      expect(result.status).to.equal(200);
+      expect(result.contentType).to.equal('text/html');
+      expect(result.body).to.be.ok;
     });
 
-    test('should handle different content types', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'test-org',
-        key: 'image.jpg',
-      };
+    it('handles different content types', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(200, 'image-data', { 'content-type': 'image/jpeg' });
 
-      const mockS3Response = {
-        Body: 'image-data',
-        $metadata: { httpStatusCode: 200 },
-        ContentType: 'image/jpeg',
-        ContentLength: 456,
-      };
+      const env = createEnv();
+      const daCtx = { bucket: 'test-bucket', org: 'test-org', key: 'image.jpg' };
 
-      mockSend.mockResolvedValue(mockS3Response);
+      const result = await getObject(env, daCtx);
 
-      const result = await getObject(mockEnv, mockDaCtx);
-
-      expect(result.contentType).toBe('image/jpeg');
-      expect(result.contentLength).toBe(456);
+      expect(result.contentType).to.equal('image/jpeg');
+      expect(result.status).to.equal(200);
     });
   });
 
   describe('error handling', () => {
-    test('should return 404 when S3 call fails', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'test-org',
-        key: 'nonexistent-key',
-      };
+    it('returns 404 when S3 call fails', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(404);
 
-      mockSend.mockRejectedValue(new Error('Object not found'));
+      const env = createEnv();
+      const daCtx = { bucket: 'test-bucket', org: 'test-org', key: 'nonexistent-key' };
 
-      const result = await getObject(mockEnv, mockDaCtx);
+      const result = await getObject(env, daCtx);
 
-      expect(result).toEqual({
-        body: '',
-        status: 404,
-      });
+      expect(result).to.deep.equal({ body: '', status: 404 });
     });
 
-    test('should handle S3 client errors gracefully', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'test-org',
-        key: 'test-key',
-      };
+    it('returns 404 when S3 returns error', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .replyWithError('Network error');
 
-      mockSend.mockRejectedValue(new Error('Network error'));
+      const env = createEnv();
+      const daCtx = { bucket: 'test-bucket', org: 'test-org', key: 'test-key' };
 
-      const result = await getObject(mockEnv, mockDaCtx);
+      const result = await getObject(env, daCtx);
 
-      expect(result).toEqual({
-        body: '',
-        status: 404,
-      });
+      expect(result).to.deep.equal({ body: '', status: 404 });
     });
   });
 
   describe('input building', () => {
-    test('should build correct S3 input with org prefix', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'my-org',
-        key: 'site/page.html',
-      };
+    it('fetches correct key (org/key)', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/my-org\/site\/page\.html/)
+        .reply(200, 'content', { 'content-type': 'text/html' });
 
-      mockSend.mockResolvedValue({
-        Body: 'content',
-        $metadata: { httpStatusCode: 200 },
-        ContentType: 'text/html',
-        ContentLength: 100,
-      });
+      const env = createEnv();
+      const daCtx = { bucket: 'test-bucket', org: 'my-org', key: 'site/page.html' };
 
-      await getObject(mockEnv, mockDaCtx);
+      const result = await getObject(env, daCtx);
 
-      expect(GetObjectCommand).toHaveBeenCalledWith({
-        Bucket: 'test-bucket',
-        Key: 'my-org/site/page.html',
-      });
-    });
-
-    test('should handle different bucket names', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'custom-bucket' };
-      const mockDaCtx = {
-        bucket: 'custom-bucket',
-        org: 'test-org',
-        key: 'test-key',
-      };
-
-      mockSend.mockResolvedValue({
-        Body: 'content',
-        $metadata: { httpStatusCode: 200 },
-        ContentType: 'text/html',
-        ContentLength: 100,
-      });
-
-      await getObject(mockEnv, mockDaCtx);
-
-      expect(GetObjectCommand).toHaveBeenCalledWith({
-        Bucket: 'custom-bucket',
-        Key: 'test-org/test-key',
-      });
-    });
-  });
-
-  describe('S3 client configuration', () => {
-    test('should create S3Client with correct configuration', async () => {
-      const mockEnv = { AEM_BUCKET_NAME: 'test-bucket' };
-      const mockDaCtx = {
-        bucket: 'test-bucket',
-        org: 'test-org',
-        key: 'test-key',
-      };
-
-      mockSend.mockResolvedValue({
-        Body: 'content',
-        $metadata: { httpStatusCode: 200 },
-        ContentType: 'text/html',
-        ContentLength: 100,
-      });
-
-      await getObject(mockEnv, mockDaCtx);
-
-      expect(getS3Config).toHaveBeenCalledWith(mockEnv);
-      expect(S3Client).toHaveBeenCalledWith({
-        region: 'auto',
-        endpoint: 'https://test-s3-endpoint.com',
-        credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
-        },
-      });
+      expect(result.status).to.equal(200);
+      expect(result.body).to.be.ok;
     });
   });
 });

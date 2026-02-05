@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Adobe. All rights reserved.
+ * Copyright 2026 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -9,11 +9,13 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { describe, test, expect } from 'vitest';
+
+/* eslint-env mocha */
+import { expect } from 'chai';
 import getS3Config from '../../src/storage/utils.js';
 
 describe('getS3Config', () => {
-  test('should return correct S3 configuration', () => {
+  it('returns correct S3 configuration', () => {
     const mockEnv = {
       S3_DEF_URL: 'https://test-s3-endpoint.com',
       S3_ACCESS_KEY_ID: 'test-access-key',
@@ -22,7 +24,7 @@ describe('getS3Config', () => {
 
     const result = getS3Config(mockEnv);
 
-    expect(result).toEqual({
+    expect(result).to.deep.equal({
       region: 'auto',
       endpoint: 'https://test-s3-endpoint.com',
       credentials: {
@@ -32,7 +34,7 @@ describe('getS3Config', () => {
     });
   });
 
-  test('should handle different environment configurations', () => {
+  it('handles different environment configurations', () => {
     const mockEnv = {
       S3_DEF_URL: 'https://prod-s3-endpoint.com',
       S3_ACCESS_KEY_ID: 'prod-access-key',
@@ -41,13 +43,13 @@ describe('getS3Config', () => {
 
     const result = getS3Config(mockEnv);
 
-    expect(result.region).toBe('auto');
-    expect(result.endpoint).toBe('https://prod-s3-endpoint.com');
-    expect(result.credentials.accessKeyId).toBe('prod-access-key');
-    expect(result.credentials.secretAccessKey).toBe('prod-secret-key');
+    expect(result.region).to.equal('auto');
+    expect(result.endpoint).to.equal('https://prod-s3-endpoint.com');
+    expect(result.credentials.accessKeyId).to.equal('prod-access-key');
+    expect(result.credentials.secretAccessKey).to.equal('prod-secret-key');
   });
 
-  test('should always return auto region', () => {
+  it('always returns auto region', () => {
     const mockEnv = {
       S3_DEF_URL: 'https://test-s3-endpoint.com',
       S3_ACCESS_KEY_ID: 'test-access-key',
@@ -56,10 +58,10 @@ describe('getS3Config', () => {
 
     const result = getS3Config(mockEnv);
 
-    expect(result.region).toBe('auto');
+    expect(result.region).to.equal('auto');
   });
 
-  test('should structure credentials correctly', () => {
+  it('structures credentials correctly', () => {
     const mockEnv = {
       S3_DEF_URL: 'https://test-s3-endpoint.com',
       S3_ACCESS_KEY_ID: 'test-access-key',
@@ -68,9 +70,9 @@ describe('getS3Config', () => {
 
     const result = getS3Config(mockEnv);
 
-    expect(result.credentials).toHaveProperty('accessKeyId');
-    expect(result.credentials).toHaveProperty('secretAccessKey');
-    expect(typeof result.credentials.accessKeyId).toBe('string');
-    expect(typeof result.credentials.secretAccessKey).toBe('string');
+    expect(result.credentials).to.have.property('accessKeyId');
+    expect(result.credentials).to.have.property('secretAccessKey');
+    expect(typeof result.credentials.accessKeyId).to.equal('string');
+    expect(typeof result.credentials.secretAccessKey).to.equal('string');
   });
 });
