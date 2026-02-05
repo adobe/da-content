@@ -32,18 +32,21 @@ function isAllowListed(env, req, org) {
 }
 
 function shouldGetFromStorage(env, req, pathname, org) {
-  // Admin opt-in orgs always use admin, even for embeddable assets
-  if (env.ADMIN_OPTIN_ORGS?.split(',').includes(org)) {
-    return false;
+  // When Helix Admin calls, allowlisted orgs always use storage
+  if (isAllowListed(env, req, org)) {
+    return true;
   }
 
   // Embeddable assets go to storage by default
   if (isEmbeddableAsset(pathname)) {
+    // Admin opt-in orgs use admin even for embeddable assets
+    if (env.ADMIN_OPTIN_ORGS?.split(',').includes(org)) {
+      return false;
+    }
     return true;
   }
 
-  // Allowlisted orgs use storage
-  return isAllowListed(env, req, org);
+  return false;
 }
 
 export default {
