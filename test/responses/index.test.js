@@ -31,31 +31,6 @@ describe('daResp', () => {
     expect(response.headers.get('Content-Type')).to.equal('text/html');
   });
 
-  it('sets Content-Disposition: attachment for image/svg+xml', () => {
-    const resp = daResp({ body: '<svg/>', status: 200, contentType: 'image/svg+xml' });
-    expect(resp.headers.get('Content-Disposition')).to.equal('attachment');
-  });
-
-  it('sets Content-Disposition: attachment for image/svg', () => {
-    const resp = daResp({ body: '<svg/>', status: 200, contentType: 'image/svg' });
-    expect(resp.headers.get('Content-Disposition')).to.equal('attachment');
-  });
-
-  it('sets Content-Disposition: attachment for image/svg+xml with charset', () => {
-    const resp = daResp({ body: '<svg/>', status: 200, contentType: 'image/svg+xml; charset=utf-8' });
-    expect(resp.headers.get('Content-Disposition')).to.equal('attachment');
-  });
-
-  it('does not set Content-Disposition for non-SVG content types', () => {
-    const resp = daResp({ body: 'ok', status: 200, contentType: 'image/png' });
-    expect(resp.headers.get('Content-Disposition')).to.be.null;
-  });
-
-  it('does not set Content-Disposition when contentType is missing', () => {
-    const resp = daResp({ body: '', status: 404 });
-    expect(resp.headers.get('Content-Disposition')).to.be.null;
-  });
-
   it('handles different status codes', () => {
     const response = daResp({ body: 'error message', status: 404 });
     expect(response.status).to.equal(404);

@@ -9,12 +9,6 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-function isSvgContentType(contentType) {
-  if (!contentType) return false;
-  const type = contentType.toLowerCase().split(';')[0].trim();
-  return type === 'image/svg+xml' || type === 'image/svg';
-}
-
 export function daResp({ body, status, contentType }) {
   const headers = new Headers();
   headers.append('Access-Control-Allow-Origin', '*');
@@ -22,7 +16,6 @@ export function daResp({ body, status, contentType }) {
   headers.append('Access-Control-Allow-Headers', 'authorization');
 
   if (contentType) headers.append('Content-Type', contentType);
-  if (isSvgContentType(contentType)) headers.append('Content-Disposition', 'attachment');
 
   return new Response(body, { status, headers });
 }
