@@ -66,7 +66,7 @@ export function getCookie(req, org) {
 
     if (cookieValue) {
       const respHeaders = new Headers();
-      respHeaders.append('Set-Cookie', `auth_token=${cookieValue}; Secure; Path=/${org}; HttpOnly; SameSite=None; Partitioned; Max-Age=84600`);
+      respHeaders.append('Set-Cookie', `auth_token=${cookieValue}; Secure; Path=/; HttpOnly; SameSite=None; Partitioned; Max-Age=84600`);
       respHeaders.append('Access-Control-Allow-Origin', req.headers.get('Origin'));
       Object.entries(DEFAULT_CORS_HEADERS).forEach(([key, value]) => {
         respHeaders.append(key, value);
