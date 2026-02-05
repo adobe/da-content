@@ -62,7 +62,7 @@ export function getCookie(req, org, site) {
 
   const authToken = headers.get('Authorization');
   if (authToken) {
-    const cookieValue = authToken.split(' ')[1];
+    const cookieValue = authToken.split(' ')[1]?.replace(/[^a-zA-Z0-9\-_.=]/g, '') || null;
 
     if (cookieValue) {
       const respHeaders = new Headers();
