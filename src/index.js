@@ -57,7 +57,7 @@ export default {
     const [, org, site, root] = url.pathname.split('/');
 
     if (root === '.gimme_cookie') {
-      return getCookie(req, org, site);
+      return getCookie(req, org);
     }
 
     if (!org || !site) return get404();
