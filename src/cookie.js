@@ -40,7 +40,7 @@ function isTrustedOrigin(origin) {
   return pattern.test(origin);
 }
 
-export function getCookie(req, org) {
+export function getCookie(req) {
   if (!isTrustedOrigin(req.headers.get('Origin'))) {
     return daResp({ body: '403 Forbidden', status: 403, contentType: 'text/plain' });
   }
