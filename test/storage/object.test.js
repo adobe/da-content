@@ -52,7 +52,7 @@ describe('getObject', () => {
 
       expect(result.status).to.equal(200);
       expect(result.contentType).to.equal('text/html');
-      expect(result.body).to.be.ok;
+      expect(result.body).to.not.equal(null);
     });
 
     it('handles different content types', async () => {
@@ -110,7 +110,7 @@ describe('getObject', () => {
       const result = await getObject(env, daCtx);
 
       expect(result.status).to.equal(200);
-      expect(result.body).to.be.ok;
+      expect(result.body).to.not.equal(null);
     });
   });
 });
