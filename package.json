@@ -7,16 +7,22 @@
     "deploy:prod": "wrangler deploy",
     "deploy:stage": "wrangler deploy --env stage",
     "dev": "wrangler dev",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "start": "wrangler dev",
+    "test": "mocha 'test/**/*.test.js'",
+    "test:coverage": "c8 mocha 'test/**/*.test.js'"
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "3.0.9",
+    "chai": "5.1.2",
     "eslint": "9.4.0",
-    "vitest": "3.2.4",
-    "wrangler": "4.33.1"
+    "mocha": "10.8.2",
+    "nock": "15.0.0",
+    "c8": "10.1.2",
+    "wrangler": "4.63.0"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.878.0",
+    "@aws-sdk/client-s3": "3.984.0",
     "cookie": "1.0.2"
   },
   "lint-staged": {
