@@ -100,6 +100,20 @@ describe('Index Tests', () => {
     });
   });
 
+  describe('cookie endpoint', () => {
+    it('calls getCookie for .gimme_cookie path', async () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://da.live' },
+      });
+      const env = createEnv();
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(401);
+      expect(await result.text()).to.equal('401 Unauthorized');
+    });
+  });
+
   describe('admin access (allowlisted vs not)', () => {
     it('uses storage for allowlisted org with correct IP', async () => {
       nock.s3(S3_BUCKET_HOST).get(/\/.+/).reply(200, 'storage content', { 'content-type': 'text/html' });
@@ -180,6 +194,22 @@ describe('Index Tests', () => {
 
       expect(result.status).to.equal(200);
       expect(await result.text()).to.equal('fake-png-bytes');
+    });
+
+    it('uses admin for embeddable asset when org is in ADMIN_OPTIN_ORGS', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'admin content', { 'content-type': 'text/html' });
+
+      const req = createRequest('https://example.com/optin-org/site/logo.png', {
+        headers: { 'cf-connecting-ip': '1.2.3.4' },
+      });
+      const env = createEnv({ ADMIN_OPTIN_ORGS: 'optin-org' });
+
+      const result = await worker.fetch(req, env);
+
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('admin content');
     });
 
     it('uses storage for .svg', async () => {
