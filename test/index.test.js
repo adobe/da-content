@@ -182,7 +182,7 @@ describe('Index Tests', () => {
       expect(await result.text()).to.equal('fake-png-bytes');
     });
 
-    it('uses storage for .svg', async () => {
+    it('uses storage for .svg and sets Content-Disposition attachment', async () => {
       nock.s3(S3_BUCKET_HOST)
         .get(/\/.+/)
         .reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
@@ -195,6 +195,7 @@ describe('Index Tests', () => {
       const result = await worker.fetch(req, env);
 
       expect(result.status).to.equal(200);
+      expect(result.headers.get('Content-Disposition')).to.equal('attachment');
       expect(await result.text()).to.equal('<svg/>');
     });
   });
