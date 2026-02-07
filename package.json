@@ -9,7 +9,8 @@
     "dev": "wrangler dev",
     "lint": "eslint .",
     "start": "wrangler dev",
-    "test": "mocha 'test/**/*.test.js'"
+    "test": "mocha 'test/**/*.test.js'",
+    "test:coverage": "c8 mocha 'test/**/*.test.js'"
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "3.0.9",
@@ -17,6 +18,7 @@
     "eslint": "9.4.0",
     "mocha": "10.8.2",
     "nock": "15.0.0",
+    "c8": "10.1.2",
     "wrangler": "4.63.0"
   },
   "dependencies": {

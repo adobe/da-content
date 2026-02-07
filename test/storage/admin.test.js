@@ -113,6 +113,20 @@ describe('getFromAdmin', () => {
       const result = await getFromAdmin(req, env);
       expect(result.status).to.equal(200);
     });
+
+    it('does not use cookie auth when cookie header is present but empty', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
+        .reply(200, 'ok', { 'content-type': 'text/html' });
+
+      const req = createRequest('https://example.com/org/site/page', {
+        headers: { cookie: '' },
+      });
+      const env = createEnv();
+
+      const result = await getFromAdmin(req, env);
+      expect(result.status).to.equal(200);
+    });
   });
 
   describe('path canonicalization', () => {
