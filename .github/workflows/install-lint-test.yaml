@@ -1,4 +1,5 @@
 name: Install, lint, and test
+
 on:
   push:
     branches:
@@ -9,9 +10,14 @@ jobs:
   run-tests:
     name: Running tests
     runs-on: ubuntu-latest
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [22.x]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -29,18 +35,5 @@ jobs:
     - name: Lint the code
       run: npm run lint
 
-    # - name: Run the tests
-    #   run: npm test
-
-    # - name: Setup LCOV
-    #   uses: hrishikesh-kadam/setup-lcov@v1
-
-    # - name: Report code coverage
-    #   uses: zgosalvez/github-actions-report-lcov@v4
-    #   with:
-    #     coverage-files: coverage/lcov.info
-    #     minimum-coverage: 85
-    #     artifact-name: code-coverage-report
-    #     github-token: ${{ secrets.GITHUB_TOKEN }}
-    #     update-comment: true
-
+    - name: Run the tests
+      run: npm run test:coverage
