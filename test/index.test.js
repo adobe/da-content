@@ -179,10 +179,10 @@ describe('Index Tests', () => {
     });
   });
 
-  describe('embeddable assets (storage by default)', () => {
-    it('uses storage for .png when not allowlisted', async () => {
-      nock.s3(S3_BUCKET_HOST)
-        .get(/\/.+/)
+  describe('embeddable assets (admin by default)', () => {
+    it('uses admin for .png when not opted out', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
         .reply(200, 'fake-png-bytes', { 'content-type': 'image/png' });
 
       const req = createRequest('https://example.com/some-org/site/logo.png', {
@@ -196,25 +196,25 @@ describe('Index Tests', () => {
       expect(await result.text()).to.equal('fake-png-bytes');
     });
 
-    it('uses admin for embeddable asset when org is in ADMIN_OPTIN_ORGS', async () => {
-      nock.admin()
-        .get(/\/source\/.+/)
-        .reply(200, 'admin content', { 'content-type': 'text/html' });
+    it('uses storage for embeddable asset when org is in ADMIN_IMAGES_OPTOUT_ORGS', async () => {
+      nock.s3(S3_BUCKET_HOST)
+        .get(/\/.+/)
+        .reply(200, 'storage content', { 'content-type': 'image/png' });
 
-      const req = createRequest('https://example.com/optin-org/site/logo.png', {
+      const req = createRequest('https://example.com/optout-org/site/logo.png', {
         headers: { 'cf-connecting-ip': '1.2.3.4' },
       });
-      const env = createEnv({ ADMIN_OPTIN_ORGS: 'optin-org' });
+      const env = createEnv({ ADMIN_IMAGES_OPTOUT_ORGS: 'optout-org' });
 
       const result = await worker.fetch(req, env);
 
       expect(result.status).to.equal(200);
-      expect(await result.text()).to.equal('admin content');
+      expect(await result.text()).to.equal('storage content');
     });
 
-    it('uses storage for .svg and sets Content-Disposition attachment', async () => {
-      nock.s3(S3_BUCKET_HOST)
-        .get(/\/.+/)
+    it('uses admin for .svg and sets Content-Disposition attachment', async () => {
+      nock.admin()
+        .get(/\/source\/.+/)
         .reply(200, '<svg/>', { 'content-type': 'image/svg+xml' });
 
       const req = createRequest('https://example.com/some-org/site/icon.svg', {

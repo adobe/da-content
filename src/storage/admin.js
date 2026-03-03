@@ -101,10 +101,11 @@ export default async function getFromAdmin(req, env) {
     });
     const { status, headers } = resp;
     const body = await resp.blob();
+    const contentType = headers.get('content-type');
 
     // eslint-disable-next-line no-console
     console.log('<- admin responded with:', status);
-    return new Response(body, { status, headers });
+    return daResp({ body, status, contentType });
   } catch (e) {
     const msg = 'Failed to fetch from admin';
     // eslint-disable-next-line no-console
