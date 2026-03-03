@@ -37,13 +37,12 @@ function shouldGetFromStorage(env, req, pathname, org) {
     return true;
   }
 
-  // Embeddable assets go to storage by default
+  // Embeddable assets (images) go to admin by default unless org opts out
   if (isEmbeddableAsset(pathname)) {
-    // Admin opt-in orgs use admin even for embeddable assets
-    if (env.ADMIN_OPTIN_ORGS?.split(',').includes(org)) {
-      return false;
+    if (env.ADMIN_IMAGES_OPTOUT_ORGS?.split(',').includes(org)) {
+      return true;
     }
-    return true;
+    return false;
   }
 
   return false;
