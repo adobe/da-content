@@ -223,4 +223,38 @@ describe('getFromAdmin', () => {
       expect(result.headers.get('x-error')).to.equal('Failed to fetch from admin');
     });
   });
+
+  describe('response body streaming', () => {
+    it('forwards the upstream body without fully buffering it in memory', async () => {
+      const upstreamBody = new TextEncoder().encode('image-bytes');
+      const upstream = new Response(upstreamBody, {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg' },
+      });
+      const fullBufferReads = [];
+      const proxied = new Proxy(upstream, {
+        get(target, prop) {
+          if (prop === 'blob' || prop === 'arrayBuffer' || prop === 'text') {
+            return async () => {
+              fullBufferReads.push(prop);
+              return target[prop]();
+            };
+          }
+          const value = target[prop];
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+
+      const req = createRequest('https://example.com/org/site/photo.jpg');
+      const env = { daadmin: { fetch: async () => proxied } };
+
+      const result = await getFromAdmin(req, env);
+
+      expect(fullBufferReads, 'worker must not read the upstream body into memory before responding').to.deep.equal([]);
+      expect(result.status).to.equal(200);
+      expect(result.headers.get('content-type')).to.equal('image/jpeg');
+      const out = new Uint8Array(await result.arrayBuffer());
+      expect(out).to.deep.equal(upstreamBody);
+    });
+  });
 });
