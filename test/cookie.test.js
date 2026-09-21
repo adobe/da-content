@@ -102,6 +102,20 @@ describe('getCookie', () => {
       expect(result.status).to.equal(401);
     });
 
+    it('sets the cookie and reflects a pattern-matched ABV origin on the 200 path', async () => {
+      const origin = 'https://pr-123.d2ikwb7s634epv.amplifyapp.com';
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: {
+          Origin: origin,
+          Authorization: 'Bearer my-valid-token-123',
+        },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(200);
+      expect(result.headers.get('Set-Cookie')).to.include('auth_token=my-valid-token-123');
+      expect(result.headers.get('Access-Control-Allow-Origin')).to.equal(origin);
+    });
+
     it('returns 403 for a suffix-appended Amplify origin (no anchoring bypass)', () => {
       const req = createRequest('https://example.com/org/site/.gimme_cookie', {
         headers: { Origin: 'https://pr-123.d2ikwb7s634epv.amplifyapp.com.evil.com' },
