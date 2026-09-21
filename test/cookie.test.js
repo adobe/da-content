@@ -12,7 +12,12 @@
 
 /* eslint-env mocha */
 import { expect } from 'chai';
-import { getCookie, TRUSTED_ORIGINS, DEFAULT_CORS_HEADERS } from '../src/cookie.js';
+import {
+  getCookie,
+  TRUSTED_ORIGINS,
+  TRUSTED_ORIGIN_PATTERNS,
+  DEFAULT_CORS_HEADERS,
+} from '../src/cookie.js';
 
 function createRequest(url, { method = 'GET', headers = {} } = {}) {
   const h = new Headers(headers);
@@ -66,6 +71,59 @@ describe('getCookie', () => {
       });
       const result = getCookie(req);
       expect(result.status).to.equal(401);
+    });
+
+    it('accepts exact trusted origin https://localhost:3000 and reflects it', async () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: {
+          Origin: 'https://localhost:3000',
+          Authorization: 'Bearer my-valid-token-123',
+        },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(200);
+      expect(result.headers.get('Set-Cookie')).to.include('auth_token=my-valid-token-123');
+      expect(result.headers.get('Access-Control-Allow-Origin')).to.equal('https://localhost:3000');
+    });
+
+    it('accepts ABV PR-preview pattern origin', async () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://pr-123.d2ikwb7s634epv.amplifyapp.com' },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(401);
+    });
+
+    it('accepts ABV demo PR-preview pattern origin', async () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://pr-7-demo.dklz75mbshc2w.amplifyapp.com' },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(401);
+    });
+
+    it('returns 403 for a suffix-appended Amplify origin (no anchoring bypass)', () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://pr-123.d2ikwb7s634epv.amplifyapp.com.evil.com' },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(403);
+    });
+
+    it('returns 403 for a bare amplifyapp.com subdomain', () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://evil.amplifyapp.com' },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(403);
+    });
+
+    it('returns 403 for a non-numeric PR number', () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: { Origin: 'https://pr-abc.d2ikwb7s634epv.amplifyapp.com' },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(403);
     });
   });
 
@@ -149,6 +207,21 @@ describe('TRUSTED_ORIGINS', () => {
   it('includes da.live and localhost', () => {
     expect(TRUSTED_ORIGINS).to.include('https://da.live');
     expect(TRUSTED_ORIGINS).to.include('http://localhost:3000');
+  });
+
+  it('keeps the http localhost entry and adds the https one', () => {
+    expect(TRUSTED_ORIGINS).to.include('http://localhost:3000');
+    expect(TRUSTED_ORIGINS).to.include('https://localhost:3000');
+  });
+});
+
+describe('TRUSTED_ORIGIN_PATTERNS', () => {
+  it('pins the exact Amplify app IDs and does not allow a bare amplifyapp.com', () => {
+    const matches = (origin) => TRUSTED_ORIGIN_PATTERNS.some((p) => p.test(origin));
+    expect(matches('https://pr-123.d2ikwb7s634epv.amplifyapp.com')).to.equal(true);
+    expect(matches('https://pr-7-demo.dklz75mbshc2w.amplifyapp.com')).to.equal(true);
+    expect(matches('https://evil.amplifyapp.com')).to.equal(false);
+    expect(matches('https://pr-123.d2ikwb7s634epv.amplifyapp.com.evil.com')).to.equal(false);
   });
 });
 

@@ -16,6 +16,17 @@ export const TRUSTED_ORIGINS = [
   'https://preview-aemcoder.adobe.io',
   'https://preview-excat-stage.adobe.io',
   'http://localhost:3000',
+  'https://localhost:3000',
+];
+
+// Trusted patterns for dynamic subdomains.
+export const TRUSTED_ORIGIN_PATTERNS = [
+  // da.live: https://<alphanumeric>--da-live--adobe.aem.(live|page)
+  /^https:\/\/[a-zA-Z0-9]+-?-da-live--adobe\.aem\.(live|page)$/,
+  // ABV PR previews
+  /^https:\/\/pr-\d+\.d2ikwb7s634epv\.amplifyapp\.com$/,
+  // ABV demo PR previews
+  /^https:\/\/pr-\d+-demo\.dklz75mbshc2w\.amplifyapp\.com$/,
 ];
 
 export const DEFAULT_CORS_HEADERS = {
@@ -27,19 +38,12 @@ export const DEFAULT_CORS_HEADERS = {
 
 /**
  * Check if the origin is trusted.
- * Supports exact matches and pattern matching for DA aem.live and aem.page domains.
+ * Supports exact matches and pattern matching for dynamic-subdomain deployments.
  */
 function isTrustedOrigin(origin) {
   if (!origin) return false;
-
-  // Check exact matches
-  if (TRUSTED_ORIGINS.includes(origin)) {
-    return true;
-  }
-
-  // Check pattern: https://<alphanumeric>--da-live--adobe.aem.(live|page)
-  const pattern = /^https:\/\/[a-zA-Z0-9]+-?-da-live--adobe\.aem\.(live|page)$/;
-  return pattern.test(origin);
+  if (TRUSTED_ORIGINS.includes(origin)) return true;
+  return TRUSTED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
 }
 
 export function getCookie(req) {
