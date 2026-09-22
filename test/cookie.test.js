@@ -67,6 +67,19 @@ describe('getCookie', () => {
       const result = getCookie(req);
       expect(result.status).to.equal(401);
     });
+
+    it('accepts exact trusted origin https://localhost:3000 and reflects it', async () => {
+      const req = createRequest('https://example.com/org/site/.gimme_cookie', {
+        headers: {
+          Origin: 'https://localhost:3000',
+          Authorization: 'Bearer my-valid-token-123',
+        },
+      });
+      const result = getCookie(req);
+      expect(result.status).to.equal(200);
+      expect(result.headers.get('Set-Cookie')).to.include('auth_token=my-valid-token-123');
+      expect(result.headers.get('Access-Control-Allow-Origin')).to.equal('https://localhost:3000');
+    });
   });
 
   describe('method handling', () => {
@@ -149,6 +162,11 @@ describe('TRUSTED_ORIGINS', () => {
   it('includes da.live and localhost', () => {
     expect(TRUSTED_ORIGINS).to.include('https://da.live');
     expect(TRUSTED_ORIGINS).to.include('http://localhost:3000');
+  });
+
+  it('keeps the http localhost entry and adds the https one', () => {
+    expect(TRUSTED_ORIGINS).to.include('http://localhost:3000');
+    expect(TRUSTED_ORIGINS).to.include('https://localhost:3000');
   });
 });
 

@@ -16,6 +16,7 @@ export const TRUSTED_ORIGINS = [
   'https://preview-aemcoder.adobe.io',
   'https://preview-excat-stage.adobe.io',
   'http://localhost:3000',
+  'https://localhost:3000',
 ];
 
 export const DEFAULT_CORS_HEADERS = {
