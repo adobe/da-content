@@ -77,7 +77,7 @@ export default async function getFromAdmin(req, env) {
     return daResp({ body: '', status: 200 });
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
     return new Response('', { status: 405 });
   }
 
@@ -92,14 +92,23 @@ export default async function getFromAdmin(req, env) {
   if (authHeader) {
     reqHeaders.set('authorization', authHeader);
   }
+  ['if-match', 'if-none-match'].forEach((name) => {
+    if (req.headers.has(name)) reqHeaders.set(name, req.headers.get(name));
+  });
 
   try {
     const resp = await env.daadmin.fetch(url, {
+      method: req.method,
       headers: reqHeaders,
     });
     const { status, headers } = resp;
     const contentType = headers.get('content-type');
-    return daResp({ body: resp.body, status, contentType });
+    const result = daResp({ body: req.method === 'HEAD' ? undefined : resp.body, status, contentType });
+    ['etag', 'last-modified', 'cache-control', 'content-length', 'x-error', 'x-error-code', 'retry-after'].forEach((name) => {
+      if (headers.has(name)) result.headers.set(name, headers.get(name));
+    });
+    result.headers.set('access-control-expose-headers', 'ETag, Last-Modified, x-error, x-error-code, Retry-After');
+    return result;
   } catch (e) {
     const msg = 'Failed to fetch from admin';
     return new Response(

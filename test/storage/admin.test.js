@@ -180,6 +180,30 @@ describe('getFromAdmin', () => {
   });
 
   describe('admin API integration', () => {
+    it('forwards conditional HEAD and exposes metadata without a body', async () => {
+      nock.admin().head('/source/org/site/page.html')
+        .matchHeader('if-none-match', '"revision"')
+        .reply(304, '', { etag: '"revision"', 'cache-control': 'private, no-store' });
+      const result = await getFromAdmin(createRequest('https://example.com/org/site/page', {
+        method: 'HEAD', headers: { 'if-none-match': '"revision"' },
+      }), createEnv());
+      expect(result.status).to.equal(304);
+      expect(await result.text()).to.equal('');
+      expect(result.headers.get('etag')).to.equal('"revision"');
+      expect(result.headers.get('cache-control')).to.equal('private, no-store');
+      expect(result.headers.get('access-control-expose-headers')).to.include('ETag');
+    });
+
+    it('preserves upstream error details', async () => {
+      nock.admin().get('/source/org/site/page.html')
+        .reply(429, 'limited', { 'x-error': 'receiver limit', 'retry-after': '30' });
+      const result = await getFromAdmin(createRequest('https://example.com/org/site/page'), createEnv());
+      expect(result.status).to.equal(429);
+      expect(await result.text()).to.equal('limited');
+      expect(result.headers.get('x-error')).to.equal('receiver limit');
+      expect(result.headers.get('retry-after')).to.equal('30');
+    });
+
     it('constructs correct admin URL', async () => {
       nock.admin()
         .get('/source/org/site/page.html')

@@ -16,6 +16,7 @@ import { getCookie } from './cookie.js';
 import { get404, daResp, getRobots } from './responses/index.js';
 import getFromAdmin from './storage/admin.js';
 import { isEmbeddableAsset } from './storage/utils.js';
+import isHlx6Site from './utils/hlx6.js';
 
 // https://www.aem.live/docs/security#backends-with-ip-filtering
 const HELIX_ADMIN_IP = '3.227.118.73';
@@ -63,6 +64,17 @@ export default {
     }
 
     if (!org || !site) return get404();
+
+    try {
+      if (isHlx6Site(env, org, site)) return getFromAdmin(req, env);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[hlx6] Migration routing configuration error', e.message);
+      const resp = daResp({ status: 503, body: e.message, contentType: 'text/plain' });
+      resp.headers.set('x-error', e.message);
+      resp.headers.set('cache-control', 'private, no-store');
+      return resp;
+    }
 
     if (shouldGetFromStorage(env, req, pathname, org)) {
       return getFromStorage(pathname, env);

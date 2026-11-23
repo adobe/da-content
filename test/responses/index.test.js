@@ -21,8 +21,8 @@ describe('daResp', () => {
     expect(response).to.be.instanceOf(Response);
     expect(response.status).to.equal(200);
     expect(response.headers.get('Access-Control-Allow-Origin')).to.equal('*');
-    expect(response.headers.get('Access-Control-Allow-Methods')).to.equal('GET, OPTIONS');
-    expect(response.headers.get('Access-Control-Allow-Headers')).to.equal('authorization');
+    expect(response.headers.get('Access-Control-Allow-Methods')).to.equal('GET, HEAD, OPTIONS');
+    expect(response.headers.get('Access-Control-Allow-Headers')).to.equal('authorization, if-match, if-none-match');
   });
 
   it('includes content type when provided', () => {

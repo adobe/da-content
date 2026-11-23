@@ -18,13 +18,13 @@ function isSvgContentType(contentType) {
 export function daResp({ body, status, contentType }) {
   const headers = new Headers();
   headers.append('Access-Control-Allow-Origin', '*');
-  headers.append('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  headers.append('Access-Control-Allow-Headers', 'authorization');
+  headers.append('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  headers.append('Access-Control-Allow-Headers', 'authorization, if-match, if-none-match');
 
   if (contentType) headers.append('Content-Type', contentType);
   if (isSvgContentType(contentType)) headers.append('Content-Disposition', 'attachment');
 
-  return new Response(body, { status, headers });
+  return new Response(status === 204 || status === 304 ? undefined : body, { status, headers });
 }
 
 export function get404() {
