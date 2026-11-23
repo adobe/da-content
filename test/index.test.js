@@ -247,12 +247,63 @@ describe('Index Tests', () => {
   });
 
   describe('migrated sites', () => {
-    it('fails closed on malformed dashboard JSON before an allowlisted storage read', async () => {
+    it('fails closed on malformed dashboard JSON before an allowlisted storage read without leaking var names', async () => {
       const result = await worker.fetch(createRequest('https://example.com/org1/site/page', {
         headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
       }), createEnv({ HLX6_MIGRATED_SITES: '["org1/site"' }));
       expect(result.status).to.equal(503);
-      expect(result.headers.get('x-error')).to.include('HLX6_MIGRATED_SITES');
+      expect(result.headers.get('x-error')).to.equal('Migration routing configuration error');
+      expect(result.headers.get('access-control-expose-headers')).to.equal('x-error');
+      expect(await result.text()).to.equal('Migration routing configuration error');
+    });
+
+    it('omits body on HEAD when migration configuration is malformed', async () => {
+      const result = await worker.fetch(createRequest('https://example.com/org1/site/page', {
+        method: 'HEAD',
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
+      }), createEnv({ HLX6_DUAL_WRITES: '["org1/site"' }));
+      expect(result.status).to.equal(503);
+      expect(result.headers.get('x-error')).to.equal('Migration routing configuration error');
+      expect(await result.text()).to.equal('');
+    });
+
+    it('normalizes percent-encoded, dot, and empty path segments before migration checks and rejects traversal', async () => {
+      nock.admin().get('/source/optout-org/site/logo.png').reply(401);
+      const encoded = await worker.fetch(createRequest('https://example.com//optout-org/./%73ite/logo.png'), createEnv({
+        ADMIN_IMAGES_OPTOUT_ORGS: 'optout-org', HLX6_MIGRATED_SITES: '["optout-org/site"]',
+      }));
+      expect(encoded.status).to.equal(401);
+
+      const traversal = await worker.fetch(createRequest('https://example.com/optout-org/other/..%2Fsite/logo.png'), createEnv({
+        ADMIN_IMAGES_OPTOUT_ORGS: 'optout-org', HLX6_MIGRATED_SITES: '["optout-org/site"]',
+      }));
+      expect(traversal.status).to.equal(404);
+
+      const badEncoding = await worker.fetch(createRequest('https://example.com/%E0%A4%A/site/page'), createEnv());
+      expect(badEncoding.status).to.equal(404);
+    });
+
+    it('preserves OPTIONS and .gimme_cookie locally on migrated sites', async () => {
+      const optionsRes = await worker.fetch(
+        createRequest('https://example.com/org1/site/page', { method: 'OPTIONS' }),
+        createEnv({ HLX6_MIGRATED_SITES: ['org1/site'] }),
+      );
+      expect(optionsRes.status).to.equal(200);
+
+      const cookieRes = await worker.fetch(
+        createRequest('https://example.com/org1/site/.gimme_cookie', { headers: { Origin: 'https://da.live' } }),
+        createEnv({ HLX6_MIGRATED_SITES: ['org1/site'] }),
+      );
+      expect(cookieRes.status).to.equal(401);
+    });
+
+    it('preserves trailing slash index lookup on storage paths', async () => {
+      nock.s3(S3_BUCKET_HOST).get(/\/org1\/site\/index\.html/).reply(200, 'index content', { 'content-type': 'text/html' });
+      const result = await worker.fetch(createRequest('https://example.com/org1/site/', {
+        headers: { 'cf-connecting-ip': HELIX_ADMIN_IP },
+      }), createEnv());
+      expect(result.status).to.equal(200);
+      expect(await result.text()).to.equal('index content');
     });
 
     it('uses admin before the IP allowlist and canonicalizes document URLs', async () => {

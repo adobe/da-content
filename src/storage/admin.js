@@ -86,10 +86,15 @@ export default async function getFromAdmin(req, env) {
   }
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    return new Response('', { status: 405 });
+    return daResp({ body: '', status: 405 });
   }
 
   let { pathname } = new URL(req.url);
+  try {
+    pathname = decodeURIComponent(pathname);
+  } catch {
+    return daResp({ body: '', status: 404 });
+  }
   pathname = canonicalizePathname(pathname);
 
   // construct request to admin
@@ -112,19 +117,18 @@ export default async function getFromAdmin(req, env) {
     const { status, headers } = resp;
     const contentType = headers.get('content-type');
     const result = daResp({ body: req.method === 'HEAD' ? undefined : resp.body, status, contentType });
-    ['etag', 'last-modified', 'cache-control', 'content-length', 'x-error', 'x-error-code', 'retry-after'].forEach((name) => {
+    const forwardedHeaders = ['etag', 'last-modified', 'cache-control', 'x-error', 'x-error-code', 'retry-after'];
+    if (req.method === 'HEAD') forwardedHeaders.push('content-length');
+    forwardedHeaders.forEach((name) => {
       if (headers.has(name)) result.headers.set(name, headers.get(name));
     });
     result.headers.set('access-control-expose-headers', 'ETag, Last-Modified, x-error, x-error-code, Retry-After');
     return result;
   } catch (e) {
     const msg = 'Failed to fetch from admin';
-    return new Response(
-      '',
-      {
-        status: 503,
-        headers: { 'x-error': msg },
-      },
-    );
+    const resp = daResp({ body: '', status: 503 });
+    resp.headers.set('x-error', msg);
+    resp.headers.set('access-control-expose-headers', 'x-error');
+    return resp;
   }
 }

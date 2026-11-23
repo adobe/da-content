@@ -6,7 +6,8 @@ Configure `HLX6_MIGRATED_SITES` in the Cloudflare dashboard with the same
 `org/site` entries used by da-admin. Arrays, JSON-encoded arrays, and
 comma/newline-separated strings are accepted. Keep `HLX6_DUAL_WRITES` in sync
 as well: a dual-writing source site still uses normal DA routing.
-Malformed migration-variable JSON fails explicitly instead of using R2.
+Malformed migration-variable JSON fails closed with `503` across the worker
+instead of risking fallback reads from R2.
 
 For migrated sites, requests use the `daadmin` service binding before any
 direct-R2 allowlist or image opt-out. Deploy the da-admin read/save bridge

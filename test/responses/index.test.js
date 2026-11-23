@@ -61,6 +61,16 @@ describe('daResp', () => {
     expect(response.status).to.equal(404);
   });
 
+  it('omits body for 204 and 304 status codes', async () => {
+    const r204 = daResp({ body: 'ignored', status: 204 });
+    expect(r204.status).to.equal(204);
+    expect(await r204.text()).to.equal('');
+
+    const r304 = daResp({ body: 'ignored', status: 304 });
+    expect(r304.status).to.equal(304);
+    expect(await r304.text()).to.equal('');
+  });
+
   it('always includes CORS headers', () => {
     const response = daResp({ body: 'test', status: 500 });
     expect(response.headers.get('Access-Control-Allow-Origin')).to.equal('*');

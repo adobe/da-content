@@ -22,25 +22,69 @@ function entries(value, name) {
   if (typeof value !== 'string') {
     throw new Error(`Invalid ${name}`);
   }
-  if (!value.trim().startsWith('[')) return value.split(/[,\n]/);
+  const trimmed = value.trim();
+  if (trimmed.startsWith('{')) {
+    throw new Error(`Invalid ${name}`);
+  }
+  if (!trimmed.startsWith('[')) return value.split(/[,\n]/);
   try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) return parsed;
+    return JSON.parse(trimmed);
   } catch {
     throw new Error(`Invalid JSON in ${name}`);
   }
-  throw new Error(`Invalid ${name}`);
 }
 
 /**
  * Normalizes a single org/site entry, ignoring values that do not identify exactly two segments.
- * @param {unknown} value Candidate org/site entry.
+ * @param {string} value Candidate org/site entry.
  * @returns {string|undefined} Lowercase org/site key, or undefined for an invalid entry.
  */
 function orgSite(value) {
-  if (typeof value !== 'string') return undefined;
   const parts = value.trim().toLowerCase().split('/').filter(Boolean);
   return parts.length === 2 ? parts.join('/') : undefined;
+}
+
+let migratedCache = { raw: undefined, sites: new Set() };
+let dualWriteCache = { raw: undefined, sources: new Set() };
+
+/**
+ * Parses and caches migrated org/site entries keyed by the raw configuration value.
+ * @param {string[]|string|undefined} raw Raw HLX6_MIGRATED_SITES configuration.
+ * @returns {Set<string>} Normalized migrated org/site keys.
+ * @throws {Error} If HLX6_MIGRATED_SITES cannot be parsed.
+ */
+function getMigratedSites(raw) {
+  if (migratedCache.raw === raw) return migratedCache.sites;
+  const sites = new Set();
+  entries(raw, 'HLX6_MIGRATED_SITES').forEach((entry) => {
+    if (typeof entry === 'string' && !entry.includes('->')) {
+      const parsed = orgSite(entry);
+      if (parsed) sites.add(parsed);
+    }
+  });
+  migratedCache = { raw, sites };
+  return sites;
+}
+
+/**
+ * Parses and caches valid dual-write source entries keyed by the raw configuration value.
+ * @param {string[]|string|undefined} raw Raw HLX6_DUAL_WRITES configuration.
+ * @returns {Set<string>} Normalized dual-write source org/site keys.
+ * @throws {Error} If HLX6_DUAL_WRITES cannot be parsed.
+ */
+function getDualWriteSources(raw) {
+  if (dualWriteCache.raw === raw) return dualWriteCache.sources;
+  const sources = new Set();
+  entries(raw, 'HLX6_DUAL_WRITES').forEach((entry) => {
+    if (typeof entry !== 'string') return;
+    const [from, to, ...rest] = entry.split('->');
+    const source = orgSite(from);
+    if (!rest.length && source && (to === undefined || !!orgSite(to))) {
+      sources.add(source);
+    }
+  });
+  dualWriteCache = { raw, sources };
+  return sources;
 }
 
 /**
@@ -56,12 +100,7 @@ function orgSite(value) {
  */
 export default function isHlx6Site(env, org, site) {
   const key = `${org}/${site}`.toLowerCase();
-  const migrated = entries(env.HLX6_MIGRATED_SITES, 'HLX6_MIGRATED_SITES')
-    .some((entry) => typeof entry === 'string' && !entry.includes('->') && orgSite(entry) === key);
-  const dualWrite = entries(env.HLX6_DUAL_WRITES, 'HLX6_DUAL_WRITES').some((entry) => {
-    if (typeof entry !== 'string') return false;
-    const [from, to, ...rest] = entry.split('->');
-    return !rest.length && orgSite(from) === key && (to === undefined || !!orgSite(to));
-  });
-  return migrated && !dualWrite;
+  const migrated = getMigratedSites(env.HLX6_MIGRATED_SITES);
+  const dualWrite = getDualWriteSources(env.HLX6_DUAL_WRITES);
+  return migrated.has(key) && !dualWrite.has(key);
 }

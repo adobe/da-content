@@ -63,7 +63,17 @@ export default {
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
 
-    const [, org, site, root] = url.pathname.split('/');
+    let decodedPathname;
+    try {
+      decodedPathname = decodeURIComponent(pathname);
+    } catch {
+      return get404();
+    }
+
+    const parts = decodedPathname.split('/').filter((part) => part !== '' && part !== '.');
+    if (parts.includes('..')) return get404();
+
+    const [org, site, root] = parts;
 
     if (root === '.gimme_cookie') {
       return getCookie(req);
@@ -71,19 +81,31 @@ export default {
 
     if (!org || !site) return get404();
 
+    let migrated;
     try {
-      if (isHlx6Site(env, org, site)) return getFromAdmin(req, env);
+      migrated = isHlx6Site(env, org, site);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[hlx6] Migration routing configuration error', e.message);
-      const resp = daResp({ status: 503, body: e.message, contentType: 'text/plain' });
-      resp.headers.set('x-error', e.message);
+      const msg = 'Migration routing configuration error';
+      const resp = daResp({
+        status: 503,
+        body: req.method === 'HEAD' ? undefined : msg,
+        contentType: 'text/plain',
+      });
+      resp.headers.set('x-error', msg);
+      resp.headers.set('access-control-expose-headers', 'x-error');
       resp.headers.set('cache-control', 'private, no-store');
       return resp;
     }
 
-    if (shouldGetFromStorage(env, req, pathname, org)) {
-      return getFromStorage(pathname, env);
+    if (migrated) return getFromAdmin(req, env);
+
+    const normalizedOrg = org.toLowerCase();
+    const normalizedPath = `/${parts.join('/')}${decodedPathname.endsWith('/') ? '/' : ''}`;
+
+    if (shouldGetFromStorage(env, req, normalizedPath.toLowerCase(), normalizedOrg)) {
+      return getFromStorage(normalizedPath, env);
     }
 
     return getFromAdmin(req, env);
