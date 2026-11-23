@@ -72,6 +72,14 @@ function canonicalizePathname(pathname) {
   return canonicalized;
 }
 
+/**
+ * Canonicalizes legacy content URLs and streams GET/HEAD through the daadmin service binding.
+ * Preserves caller cookie/header/query-token auth, conditions, metadata, errors and SVG handling.
+ * OPTIONS remains local; transport failures return 503 without falling back to R2.
+ * @param {Request} req Legacy content request.
+ * @param {{daadmin: {fetch: typeof fetch}}} env Admin service binding.
+ * @returns {Promise<Response>} Legacy-host content/metadata response or explicit error.
+ */
 export default async function getFromAdmin(req, env) {
   if (req.method === 'OPTIONS') {
     return daResp({ body: '', status: 200 });

@@ -50,6 +50,12 @@ function shouldGetFromStorage(env, req, pathname, org) {
 }
 
 export default {
+  /**
+   * Routes migrated sites through admin before legacy R2 bypasses, keeping cookie endpoints local.
+   * @param {Request} req Incoming content request.
+   * @param {Object} env Worker bindings, storage settings and migration configuration.
+   * @returns {Promise<Response>} Content response or explicit routing/configuration error.
+   */
   async fetch(req, env) {
     const url = new URL(req.url);
     const { pathname } = url;
