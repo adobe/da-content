@@ -50,6 +50,12 @@ verified. A probe already in flight can overwrite a manual update, so draining
 is necessary. Setting the value to `da` explicitly selects legacy storage;
 deleting the entry makes the next request probe again.
 
+## Development requirements
+
+Every new feature or API endpoint must follow the
+[HLX6 compatibility requirements](./AGENTS.md#hlx6-compatibility): forward
+supported calls for HLX6-backed projects or return `410 Gone` when unsupported.
+
 ## Validation
 
 Run `npm test` and `npm run lint`.
