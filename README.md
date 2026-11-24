@@ -57,6 +57,13 @@ resolve conflicting inventory first. This avoids rollout dependence on cold
 pings and prevents an overlay header from triggering premature cutover.
 Manual entries have no expiration. Deploy da-admin first.
 
+This also applies after rollout: **every new DA-served site** needs an explicit,
+non-expiring `org/site = da` entry before its first DA request, including creation
+of its first document. Wait for KV propagation first. Site creation does not seed
+the registry automatically; an AEM API source or overlay can otherwise cause a
+cold ping to select HLX6 prematurely. A temporary 404-derived `da` entry is not
+sufficient because it expires.
+
 To migrate a site, pause its traffic and drain in-flight requests/probes,
 update `org/site` to `hlx6` in the shared KV, and remove any dual-write source
 entry in da-admin. KV changes (including cached misses) can take 60 seconds
@@ -64,6 +71,11 @@ or more to propagate: keep traffic paused until both workers' routing is
 verified. A probe already in flight can overwrite a manual update, so draining
 is necessary. Setting the value to `da` explicitly selects legacy storage;
 deleting the entry makes the next request probe again.
+
+da-admin separately caches its org-discovery gate at `org:<org>` for 300 seconds.
+This derived entry does not affect direct site routing. Once backend changes
+have propagated, it can be deleted to refresh org discovery sooner; otherwise,
+listings may lag by five minutes plus KV propagation.
 
 ## Development requirements
 
