@@ -37,13 +37,14 @@ describe('getFromAdmin', () => {
   });
 
   describe('HTTP method handling', () => {
-    it('returns 405 for non-GET requests', async () => {
+    it('returns 405 with CORS headers for non-GET/HEAD requests', async () => {
       const req = createRequest('https://example.com/org/site/page', { method: 'POST' });
       const env = createEnv();
 
       const result = await getFromAdmin(req, env);
 
       expect(result.status).to.equal(405);
+      expect(result.headers.get('access-control-allow-origin')).to.equal('*');
     });
 
     it('handles OPTIONS with 200 without fetching', async () => {
@@ -177,9 +178,70 @@ describe('getFromAdmin', () => {
       const result = await getFromAdmin(req, env);
       expect(result.status).to.equal(200);
     });
+
+    it('decodes valid percent-encoding and returns 404 on malformed encoding', async () => {
+      nock.admin()
+        .get('/source/org/site/page.html')
+        .reply(200, 'ok', { 'content-type': 'text/html' });
+
+      const encoded = await getFromAdmin(createRequest('https://example.com/org/%73ite/page'), createEnv());
+      expect(encoded.status).to.equal(200);
+
+      const invalid = await getFromAdmin(createRequest('https://example.com/org/%E0%A4%A/page'), createEnv());
+      expect(invalid.status).to.equal(404);
+    });
   });
 
   describe('admin API integration', () => {
+    it('forwards HEAD 200 metadata including content-length without a body, and omits upstream content-length on GET', async () => {
+      nock.admin().head('/source/org/site/page.html')
+        .matchHeader('if-match', '"v1"')
+        .reply(200, '', {
+          'content-type': 'text/html',
+          'content-length': '128',
+          etag: '"v1"',
+          'last-modified': 'Mon, 23 Nov 2026 10:00:00 GMT',
+        });
+      const headRes = await getFromAdmin(createRequest('https://example.com/org/site/page', {
+        method: 'HEAD', headers: { 'if-match': '"v1"' },
+      }), createEnv());
+      expect(headRes.status).to.equal(200);
+      expect(await headRes.text()).to.equal('');
+      expect(headRes.headers.get('content-length')).to.equal('128');
+      expect(headRes.headers.get('etag')).to.equal('"v1"');
+      expect(headRes.headers.get('last-modified')).to.equal('Mon, 23 Nov 2026 10:00:00 GMT');
+
+      nock.admin().get('/source/org/site/page.html')
+        .reply(200, 'hello', { 'content-type': 'text/html', 'content-length': '999' });
+      const getRes = await getFromAdmin(createRequest('https://example.com/org/site/page'), createEnv());
+      expect(getRes.status).to.equal(200);
+      expect(getRes.headers.get('content-length')).to.equal(null);
+      expect(await getRes.text()).to.equal('hello');
+    });
+    it('forwards conditional HEAD and exposes metadata without a body', async () => {
+      nock.admin().head('/source/org/site/page.html')
+        .matchHeader('if-none-match', '"revision"')
+        .reply(304, '', { etag: '"revision"', 'cache-control': 'private, no-store' });
+      const result = await getFromAdmin(createRequest('https://example.com/org/site/page', {
+        method: 'HEAD', headers: { 'if-none-match': '"revision"' },
+      }), createEnv());
+      expect(result.status).to.equal(304);
+      expect(await result.text()).to.equal('');
+      expect(result.headers.get('etag')).to.equal('"revision"');
+      expect(result.headers.get('cache-control')).to.equal('private, no-store');
+      expect(result.headers.get('access-control-expose-headers')).to.include('ETag');
+    });
+
+    it('preserves upstream error details', async () => {
+      nock.admin().get('/source/org/site/page.html')
+        .reply(429, 'limited', { 'x-error': 'receiver limit', 'retry-after': '30' });
+      const result = await getFromAdmin(createRequest('https://example.com/org/site/page'), createEnv());
+      expect(result.status).to.equal(429);
+      expect(await result.text()).to.equal('limited');
+      expect(result.headers.get('x-error')).to.equal('receiver limit');
+      expect(result.headers.get('retry-after')).to.equal('30');
+    });
+
     it('constructs correct admin URL', async () => {
       nock.admin()
         .get('/source/org/site/page.html')
@@ -221,6 +283,8 @@ describe('getFromAdmin', () => {
 
       expect(result.status).to.equal(503);
       expect(result.headers.get('x-error')).to.equal('Failed to fetch from admin');
+      expect(result.headers.get('access-control-allow-origin')).to.equal('*');
+      expect(result.headers.get('access-control-expose-headers')).to.equal('x-error');
     });
   });
 

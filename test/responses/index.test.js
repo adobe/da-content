@@ -21,8 +21,8 @@ describe('daResp', () => {
     expect(response).to.be.instanceOf(Response);
     expect(response.status).to.equal(200);
     expect(response.headers.get('Access-Control-Allow-Origin')).to.equal('*');
-    expect(response.headers.get('Access-Control-Allow-Methods')).to.equal('GET, OPTIONS');
-    expect(response.headers.get('Access-Control-Allow-Headers')).to.equal('authorization');
+    expect(response.headers.get('Access-Control-Allow-Methods')).to.equal('GET, HEAD, OPTIONS');
+    expect(response.headers.get('Access-Control-Allow-Headers')).to.equal('authorization, if-match, if-none-match');
   });
 
   it('includes content type when provided', () => {
@@ -59,6 +59,16 @@ describe('daResp', () => {
   it('handles different status codes', () => {
     const response = daResp({ body: 'error message', status: 404 });
     expect(response.status).to.equal(404);
+  });
+
+  it('omits body for 204 and 304 status codes', async () => {
+    const r204 = daResp({ body: 'ignored', status: 204 });
+    expect(r204.status).to.equal(204);
+    expect(await r204.text()).to.equal('');
+
+    const r304 = daResp({ body: 'ignored', status: 304 });
+    expect(r304.status).to.equal(304);
+    expect(await r304.text()).to.equal('');
   });
 
   it('always includes CORS headers', () => {

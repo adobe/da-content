@@ -16,6 +16,7 @@ import { getCookie } from './cookie.js';
 import { get404, daResp, getRobots } from './responses/index.js';
 import getFromAdmin from './storage/admin.js';
 import { isEmbeddableAsset } from './storage/utils.js';
+import isHlx6Site from './utils/hlx6.js';
 
 // https://www.aem.live/docs/security#backends-with-ip-filtering
 const HELIX_ADMIN_IP = '3.227.118.73';
@@ -49,6 +50,12 @@ function shouldGetFromStorage(env, req, pathname, org) {
 }
 
 export default {
+  /**
+   * Routes migrated sites through admin before legacy R2 bypasses, keeping cookie endpoints local.
+   * @param {Request} req Incoming content request.
+   * @param {Object} env Worker bindings, storage settings and migration configuration.
+   * @returns {Promise<Response>} Content response or explicit routing/configuration error.
+   */
   async fetch(req, env) {
     const url = new URL(req.url);
     const { pathname } = url;
@@ -56,7 +63,17 @@ export default {
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
 
-    const [, org, site, root] = url.pathname.split('/');
+    let decodedPathname;
+    try {
+      decodedPathname = decodeURIComponent(pathname);
+    } catch {
+      return get404();
+    }
+
+    const parts = decodedPathname.split('/').filter((part) => part !== '' && part !== '.');
+    if (parts.includes('..')) return get404();
+
+    const [org, site, root] = parts;
 
     if (root === '.gimme_cookie') {
       return getCookie(req);
@@ -64,8 +81,31 @@ export default {
 
     if (!org || !site) return get404();
 
-    if (shouldGetFromStorage(env, req, pathname, org)) {
-      return getFromStorage(pathname, env);
+    let migrated;
+    try {
+      migrated = isHlx6Site(env, org, site);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[hlx6] Migration routing configuration error', e.message);
+      const msg = 'Migration routing configuration error';
+      const resp = daResp({
+        status: 503,
+        body: req.method === 'HEAD' ? undefined : msg,
+        contentType: 'text/plain',
+      });
+      resp.headers.set('x-error', msg);
+      resp.headers.set('access-control-expose-headers', 'x-error');
+      resp.headers.set('cache-control', 'private, no-store');
+      return resp;
+    }
+
+    if (migrated) return getFromAdmin(req, env);
+
+    const normalizedOrg = org.toLowerCase();
+    const normalizedPath = `/${parts.join('/')}${decodedPathname.endsWith('/') ? '/' : ''}`;
+
+    if (shouldGetFromStorage(env, req, normalizedPath.toLowerCase(), normalizedOrg)) {
+      return getFromStorage(normalizedPath, env);
     }
 
     return getFromAdmin(req, env);

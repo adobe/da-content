@@ -72,16 +72,29 @@ function canonicalizePathname(pathname) {
   return canonicalized;
 }
 
+/**
+ * Canonicalizes legacy content URLs and streams GET/HEAD through the daadmin service binding.
+ * Preserves caller cookie/header/query-token auth, conditions, metadata, errors and SVG handling.
+ * OPTIONS remains local; transport failures return 503 without falling back to R2.
+ * @param {Request} req Legacy content request.
+ * @param {{daadmin: {fetch: typeof fetch}}} env Admin service binding.
+ * @returns {Promise<Response>} Legacy-host content/metadata response or explicit error.
+ */
 export default async function getFromAdmin(req, env) {
   if (req.method === 'OPTIONS') {
     return daResp({ body: '', status: 200 });
   }
 
-  if (req.method !== 'GET') {
-    return new Response('', { status: 405 });
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return daResp({ body: '', status: 405 });
   }
 
   let { pathname } = new URL(req.url);
+  try {
+    pathname = decodeURIComponent(pathname);
+  } catch {
+    return daResp({ body: '', status: 404 });
+  }
   pathname = canonicalizePathname(pathname);
 
   // construct request to admin
@@ -92,22 +105,30 @@ export default async function getFromAdmin(req, env) {
   if (authHeader) {
     reqHeaders.set('authorization', authHeader);
   }
+  ['if-match', 'if-none-match'].forEach((name) => {
+    if (req.headers.has(name)) reqHeaders.set(name, req.headers.get(name));
+  });
 
   try {
     const resp = await env.daadmin.fetch(url, {
+      method: req.method,
       headers: reqHeaders,
     });
     const { status, headers } = resp;
     const contentType = headers.get('content-type');
-    return daResp({ body: resp.body, status, contentType });
+    const result = daResp({ body: req.method === 'HEAD' ? undefined : resp.body, status, contentType });
+    const forwardedHeaders = ['etag', 'last-modified', 'cache-control', 'x-error', 'x-error-code', 'retry-after'];
+    if (req.method === 'HEAD') forwardedHeaders.push('content-length');
+    forwardedHeaders.forEach((name) => {
+      if (headers.has(name)) result.headers.set(name, headers.get(name));
+    });
+    result.headers.set('access-control-expose-headers', 'ETag, Last-Modified, x-error, x-error-code, Retry-After');
+    return result;
   } catch (e) {
     const msg = 'Failed to fetch from admin';
-    return new Response(
-      '',
-      {
-        status: 503,
-        headers: { 'x-error': msg },
-      },
-    );
+    const resp = daResp({ body: '', status: 503 });
+    resp.headers.set('x-error', msg);
+    resp.headers.set('access-control-expose-headers', 'x-error');
+    return resp;
   }
 }
