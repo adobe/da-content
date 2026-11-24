@@ -39,6 +39,17 @@ describe('isHlx6Site', () => {
 
   afterEach(() => nock.done());
 
+  it('does not access the registry for incomplete org/site pairs', async () => {
+    registry.get = async () => {
+      throw new Error('Must not look up an incomplete site');
+    };
+    expect(await Promise.all([
+      isHlx6Site(env, undefined, 'site'),
+      isHlx6Site(env, 'org', undefined),
+    ])).to.deep.equal([false, false]);
+    expect(writes).to.deep.equal([]);
+  });
+
   it('reads both cached backends with normalized keys and observes manual changes', async () => {
     values.set('org/site', 'hlx6');
     expect(await isHlx6Site(env, 'ORG', 'SITE')).to.equal(true);
