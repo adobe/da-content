@@ -179,6 +179,31 @@ describe('getFromAdmin', () => {
       expect(result.status).to.equal(200);
     });
 
+    it('forwards percent-encoded asset filenames to admin without decoding them', async () => {
+      const urls = [];
+      const space = await getFromAdmin(createRequest('https://example.com/org/site/My%20Image.png'), {
+        daadmin: {
+          fetch: async (url) => {
+            urls.push(url);
+            return new Response('space');
+          },
+        },
+      });
+      expect(space.status).to.equal(200);
+      expect(urls).to.deep.equal(['https://admin.da.live/source/org/site/my%20image.png']);
+
+      nock.admin().get('/source/org/site/a%23b.png').reply(200, 'hash');
+      nock.admin().get('/source/org/site/100%25.png').reply(200, 'percent');
+
+      const hash = await getFromAdmin(createRequest('https://example.com/org/site/a%23b.png'), createEnv());
+      expect(hash.status).to.equal(200);
+      expect(await hash.text()).to.equal('hash');
+
+      const percent = await getFromAdmin(createRequest('https://example.com/org/site/100%25.png'), createEnv());
+      expect(percent.status).to.equal(200);
+      expect(await percent.text()).to.equal('percent');
+    });
+
     it('decodes valid percent-encoding and returns 404 on malformed encoding', async () => {
       nock.admin()
         .get('/source/org/site/page.html')

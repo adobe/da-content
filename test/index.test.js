@@ -290,6 +290,21 @@ describe('Index Tests', () => {
       expect(badEncoding.status).to.equal(404);
     });
 
+    it('forwards percent-encoded asset filenames to admin without decoding them', async () => {
+      nock.admin().get('/source/org/site/my%20image.png').reply(200, 'legacy');
+      nock.admin().get('/source/org/site/a%23b.png').reply(200, 'migrated');
+
+      const legacy = await worker.fetch(createRequest('https://example.com/org/site/My%20Image.png'), createEnv());
+      expect(legacy.status).to.equal(200);
+      expect(await legacy.text()).to.equal('legacy');
+
+      const migrated = await worker.fetch(createRequest('https://example.com/org/site/a%23b.png'), createEnv({
+        DA_SITE_BACKENDS: { get: async () => 'hlx6' },
+      }));
+      expect(migrated.status).to.equal(200);
+      expect(await migrated.text()).to.equal('migrated');
+    });
+
     it('preserves OPTIONS and .gimme_cookie locally on migrated sites', async () => {
       const optionsRes = await worker.fetch(
         createRequest('https://example.com/org1/site/page', { method: 'OPTIONS' }),
