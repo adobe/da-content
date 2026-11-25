@@ -80,14 +80,15 @@ export default {
     }
 
     if (!org || !site) return get404();
+    if (req.method === 'OPTIONS') return getFromAdmin(req, env);
 
     let migrated;
     try {
-      migrated = isHlx6Site(env, org, site);
+      migrated = await isHlx6Site(env, org, site);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('[hlx6] Migration routing configuration error', e.message);
-      const msg = 'Migration routing configuration error';
+      console.error('[hlx6] Site backend resolution failed', e.message);
+      const msg = 'Site backend resolution failed';
       const resp = daResp({
         status: 503,
         body: req.method === 'HEAD' ? undefined : msg,

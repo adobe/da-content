@@ -10,11 +10,19 @@ services = [
   { binding = "daadmin", service = "da-admin" }
 ]
 
+kv_namespaces = [
+  { binding = "DA_SITE_BACKENDS", id = "90c6a793da054676b11134d647f0aeaf" }
+]
+
 [env.stage]
 vars = { ENVIRONMENT = "stage", AEM_BUCKET_NAME = "aem-content-stage" }
 
 services = [
   { binding = "daadmin", service = "da-admin-stage" }
+]
+
+kv_namespaces = [
+  { binding = "DA_SITE_BACKENDS", id = "624b26551dcf4fe3bd31a08e70cda86f" }
 ]
 
 [dev]
