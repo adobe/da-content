@@ -103,7 +103,7 @@ export default {
 
     if (migrated) return getFromAdmin(req, env);
 
-    if (shouldGetFromStorage(env, req, decodedPathname.toLowerCase(), org.toLowerCase())) {
+    if (shouldGetFromStorage(env, req, pathname, org)) {
       return getFromStorage(pathname, env);
     }
 
