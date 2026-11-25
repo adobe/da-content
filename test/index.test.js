@@ -275,7 +275,7 @@ describe('Index Tests', () => {
     });
 
     it('normalizes percent-encoded, dot, and empty path segments before migration checks and rejects traversal', async () => {
-      nock.admin().get('/source/optout-org/site/logo.png').reply(401);
+      nock.admin().get('/source/optout-org/%73ite/logo.png').reply(401);
       const encoded = await worker.fetch(createRequest('https://example.com//optout-org/./%73ite/logo.png'), createEnv({
         ADMIN_IMAGES_OPTOUT_ORGS: 'optout-org', DA_SITE_BACKENDS: { get: async () => 'hlx6' },
       }));

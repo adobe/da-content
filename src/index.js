@@ -63,6 +63,7 @@ export default {
     if (pathname === '/favicon.ico') return get404();
     if (pathname === '/robots.txt') return getRobots();
 
+    // Decode only for routing decisions; forward the original pathname to admin/storage.
     let decodedPathname;
     try {
       decodedPathname = decodeURIComponent(pathname);
@@ -102,11 +103,8 @@ export default {
 
     if (migrated) return getFromAdmin(req, env);
 
-    const normalizedOrg = org.toLowerCase();
-    const normalizedPath = `/${parts.join('/')}${decodedPathname.endsWith('/') ? '/' : ''}`;
-
-    if (shouldGetFromStorage(env, req, normalizedPath.toLowerCase(), normalizedOrg)) {
-      return getFromStorage(normalizedPath, env);
+    if (shouldGetFromStorage(env, req, decodedPathname.toLowerCase(), org.toLowerCase())) {
+      return getFromStorage(pathname, env);
     }
 
     return getFromAdmin(req, env);

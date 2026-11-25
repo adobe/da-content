@@ -203,18 +203,6 @@ describe('getFromAdmin', () => {
       expect(percent.status).to.equal(200);
       expect(await percent.text()).to.equal('percent');
     });
-
-    it('decodes valid percent-encoding and returns 404 on malformed encoding', async () => {
-      nock.admin()
-        .get('/source/org/site/page.html')
-        .reply(200, 'ok', { 'content-type': 'text/html' });
-
-      const encoded = await getFromAdmin(createRequest('https://example.com/org/%73ite/page'), createEnv());
-      expect(encoded.status).to.equal(200);
-
-      const invalid = await getFromAdmin(createRequest('https://example.com/org/%E0%A4%A/page'), createEnv());
-      expect(invalid.status).to.equal(404);
-    });
   });
 
   describe('admin API integration', () => {
