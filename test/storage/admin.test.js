@@ -179,16 +179,29 @@ describe('getFromAdmin', () => {
       expect(result.status).to.equal(200);
     });
 
-    it('decodes valid percent-encoding and returns 404 on malformed encoding', async () => {
-      nock.admin()
-        .get('/source/org/site/page.html')
-        .reply(200, 'ok', { 'content-type': 'text/html' });
+    it('forwards percent-encoded asset filenames to admin without decoding them', async () => {
+      const urls = [];
+      const space = await getFromAdmin(createRequest('https://example.com/org/site/My%20Image.png'), {
+        daadmin: {
+          fetch: async (url) => {
+            urls.push(url);
+            return new Response('space');
+          },
+        },
+      });
+      expect(space.status).to.equal(200);
+      expect(urls).to.deep.equal(['https://admin.da.live/source/org/site/my%20image.png']);
 
-      const encoded = await getFromAdmin(createRequest('https://example.com/org/%73ite/page'), createEnv());
-      expect(encoded.status).to.equal(200);
+      nock.admin().get('/source/org/site/a%23b.png').reply(200, 'hash');
+      nock.admin().get('/source/org/site/100%25.png').reply(200, 'percent');
 
-      const invalid = await getFromAdmin(createRequest('https://example.com/org/%E0%A4%A/page'), createEnv());
-      expect(invalid.status).to.equal(404);
+      const hash = await getFromAdmin(createRequest('https://example.com/org/site/a%23b.png'), createEnv());
+      expect(hash.status).to.equal(200);
+      expect(await hash.text()).to.equal('hash');
+
+      const percent = await getFromAdmin(createRequest('https://example.com/org/site/100%25.png'), createEnv());
+      expect(percent.status).to.equal(200);
+      expect(await percent.text()).to.equal('percent');
     });
   });
 

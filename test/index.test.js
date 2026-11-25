@@ -275,7 +275,7 @@ describe('Index Tests', () => {
     });
 
     it('normalizes percent-encoded, dot, and empty path segments before migration checks and rejects traversal', async () => {
-      nock.admin().get('/source/optout-org/site/logo.png').reply(401);
+      nock.admin().get('/source/optout-org/%73ite/logo.png').reply(401);
       const encoded = await worker.fetch(createRequest('https://example.com//optout-org/./%73ite/logo.png'), createEnv({
         ADMIN_IMAGES_OPTOUT_ORGS: 'optout-org', DA_SITE_BACKENDS: { get: async () => 'hlx6' },
       }));
@@ -288,6 +288,21 @@ describe('Index Tests', () => {
 
       const badEncoding = await worker.fetch(createRequest('https://example.com/%E0%A4%A/site/page'), createEnv());
       expect(badEncoding.status).to.equal(404);
+    });
+
+    it('forwards percent-encoded asset filenames to admin without decoding them', async () => {
+      nock.admin().get('/source/org/site/my%20image.png').reply(200, 'legacy');
+      nock.admin().get('/source/org/site/a%23b.png').reply(200, 'migrated');
+
+      const legacy = await worker.fetch(createRequest('https://example.com/org/site/My%20Image.png'), createEnv());
+      expect(legacy.status).to.equal(200);
+      expect(await legacy.text()).to.equal('legacy');
+
+      const migrated = await worker.fetch(createRequest('https://example.com/org/site/a%23b.png'), createEnv({
+        DA_SITE_BACKENDS: { get: async () => 'hlx6' },
+      }));
+      expect(migrated.status).to.equal(200);
+      expect(await migrated.text()).to.equal('migrated');
     });
 
     it('preserves OPTIONS and .gimme_cookie locally on migrated sites', async () => {

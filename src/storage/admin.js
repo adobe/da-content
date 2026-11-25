@@ -89,13 +89,8 @@ export default async function getFromAdmin(req, env) {
     return daResp({ body: '', status: 405 });
   }
 
-  let { pathname } = new URL(req.url);
-  try {
-    pathname = decodeURIComponent(pathname);
-  } catch {
-    return daResp({ body: '', status: 404 });
-  }
-  pathname = canonicalizePathname(pathname);
+  // Keep the client's percent-encoding so encoded filenames reach the right source key.
+  const pathname = canonicalizePathname(new URL(req.url).pathname);
 
   // construct request to admin
   const url = `${AMDMIN_URL}${pathname}`;
